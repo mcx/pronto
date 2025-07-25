@@ -34,7 +34,7 @@ ament_target_dependencies(
   ${PROJECT_NAME}
   "Eigen3"
 )
-
+target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
 
 # Causes the visibility macros to use dllexport rather than dllimport,
 # which is appropriate when building the dll but not consuming it.
@@ -68,6 +68,7 @@ ament_target_dependencies(
   kalman_filter
   "Eigen3"
 )
+target_link_libraries(kalman_filter Eigen3::Eigen)
 
 install(
   DIRECTORY include/

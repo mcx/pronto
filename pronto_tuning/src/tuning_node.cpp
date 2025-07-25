@@ -6,10 +6,10 @@
 #include <eigen3/Eigen/Dense>
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
-#include "gazebo_msgs/msg/link_states.hpp"
+#include <gazebo_msgs/msg/link_states.hpp>
 #include <memory>
 #include "rosbag2_cpp/writer.hpp"
-#include "rosbag2_cpp/storage_options.hpp"
+#include "rosbag2_storage/storage_options.hpp"
 #define FB_LINK_SOLO "solo12::base_link"
 #define FB_LINK_ANYM "anymal_c::base"
 #include <string>
@@ -102,57 +102,47 @@ namespace tuning_node
                 }
 
 
-                writer_->create_topic(
-                    {twist_est_t_name_,
-                    "geometry_msgs/msg/TwistWithCovarianceStamped",
-                    rmw_get_serialization_format(),
-                    ""}
-                );
+                rosbag2_storage::TopicMetadata twist_metadata;
+                twist_metadata.name = twist_est_t_name_;
+                twist_metadata.type = "geometry_msgs/msg/TwistWithCovarianceStamped";
+                twist_metadata.serialization_format = rmw_get_serialization_format();
+                writer_->create_topic(twist_metadata);
 
-                writer_->create_topic(
-                    {pose_est_t_name_,
-                    "geometry_msgs/msg/PoseWithCovarianceStamped",
-                    rmw_get_serialization_format(),
-                    ""}
-                );
+                rosbag2_storage::TopicMetadata pose_metadata;
+                pose_metadata.name = pose_est_t_name_;
+                pose_metadata.type = "geometry_msgs/msg/PoseWithCovarianceStamped";
+                pose_metadata.serialization_format = rmw_get_serialization_format();
+                writer_->create_topic(pose_metadata);
 
-                writer_->create_topic(
-                    {odom_twist_cor_t_name_,
+                rosbag2_storage::TopicMetadata odom_metadata;
+                odom_metadata.name = odom_twist_cor_t_name_;
+                odom_metadata.type = "geometry_msgs/msg/Vector3Stamped";
+                odom_metadata.serialization_format = rmw_get_serialization_format();
+                writer_->create_topic(odom_metadata);
 
-                    "geometry_msgs/msg/Vector3Stamped",
+                rosbag2_storage::TopicMetadata force_metadata;
+                force_metadata.name = est_force_t_;
+                force_metadata.type = "pronto_msgs/msg/QuadrupedForceTorqueSensors";
+                force_metadata.serialization_format = rmw_get_serialization_format();
+                writer_->create_topic(force_metadata);
 
-                    rmw_get_serialization_format(),
-                    ""}
-                );
+                rosbag2_storage::TopicMetadata stance_metadata;
+                stance_metadata.name = est_stance_t_;
+                stance_metadata.type = "pronto_msgs/msg/QuadrupedStance";
+                stance_metadata.serialization_format = rmw_get_serialization_format();
+                writer_->create_topic(stance_metadata);
 
-                writer_->create_topic(
-                    {est_force_t_,
-                    "pronto_msgs/msg/QuadrupedForceTorqueSensors",
-                    rmw_get_serialization_format(),
-                    ""}
-                );
+                rosbag2_storage::TopicMetadata gt_twist_metadata;
+                gt_twist_metadata.name = "/tuning_node/ground_truth_twist";
+                gt_twist_metadata.type = "geometry_msgs/msg/TwistStamped";
+                gt_twist_metadata.serialization_format = rmw_get_serialization_format();
+                writer_->create_topic(gt_twist_metadata);
 
-                writer_->create_topic(
-                    {est_stance_t_,
-                    "pronto_msgs/msg/QuadrupedStance",
-                    rmw_get_serialization_format(),
-                    ""}
-                );
-
-                writer_->create_topic(
-                    {"/tuning_node/ground_truth_twist",
-                    "geometry_msgs/msg/TwistStamped",
-                    rmw_get_serialization_format(),
-                    ""}
-                );
-
-                writer_->create_topic(
-                    {"/tuning_node/ground_truth_pose",
-                    "geometry_msgs/msg/PoseStamped",
-                    rmw_get_serialization_format(),
-                    ""}
-                );
-
+                rosbag2_storage::TopicMetadata gt_pose_metadata;
+                gt_pose_metadata.name = "/tuning_node/ground_truth_pose";
+                gt_pose_metadata.type = "geometry_msgs/msg/PoseStamped";
+                gt_pose_metadata.serialization_format = rmw_get_serialization_format();
+                writer_->create_topic(gt_pose_metadata);
 
                 est_twist_sub_ = this->create_subscription<TwistwCov>(twist_est_t_name_,out_qos,
                 std::bind(&Tuning_Node::est_twist_sub,this,_1));

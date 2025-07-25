@@ -28,6 +28,7 @@
 #include <pronto_quadruped_commons/leg_bool_map.h>
 #include <cmath>
 #include <vector>
+#include <cstdint>
 
 namespace pronto {
 

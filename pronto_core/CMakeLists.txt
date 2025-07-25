@@ -36,7 +36,7 @@ ament_target_dependencies(
   "Eigen3"
   "rclcpp"
 )
-
+target_link_libraries(pronto_core Eigen3::Eigen)
 # Causes the visibility macros to use dllexport rather than dllimport,
 # which is appropriate when building the dll but not consuming it.
 target_compile_definitions(pronto_core PRIVATE "PRONTO_CORE_BUILDING_LIBRARY")
