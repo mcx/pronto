@@ -24,7 +24,7 @@
 #pragma once
 #include <pronto_quadruped_commons/inverse_dynamics.h>
 #include <pronto_quadruped/DynamicStanceEstimator.hpp>
-#include <ros/node_handle.h>
+#include <rclcpp/rclcpp.hpp>
 
 namespace pronto {
 namespace quadruped {
@@ -37,13 +37,13 @@ public:
     typedef pronto::quadruped::ForwardKinematics ForwardKinematics;
 
 public:
-    DynamicStanceEstimatorROS(ros::NodeHandle& nh,
+    DynamicStanceEstimatorROS(rclcpp::Node::SharedPtr nh,
                               InverseDynamicsBase& inverse_dynamics,
                               JSIMBase& jsim,
                               FeetContactForces& feet_contact_forces,
                               ForwardKinematics& forward_kinematics);
 private:
-    ros::NodeHandle& nh_;
+    rclcpp::Node::SharedPtr nh_;
 };
 
 }  // namespace quadruped

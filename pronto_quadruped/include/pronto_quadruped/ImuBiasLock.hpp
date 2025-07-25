@@ -94,6 +94,11 @@ public:
       return do_record_;
     }
 
+    inline void setTimeStep(double dt)
+    {
+      dt_ = dt;
+    }
+
 protected:
     bool debug_ = false;
     std::vector<Eigen::Vector3d> gyro_bias_history_;

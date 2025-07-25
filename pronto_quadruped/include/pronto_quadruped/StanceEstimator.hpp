@@ -153,7 +153,7 @@ public:
 
     bool isStance(LegID leg) const override;
 
-    void updateStat(double sample,
+    void updateState(double sample,
                     bool is_stance,
                     int index);
 

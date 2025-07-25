@@ -9,14 +9,14 @@ ForceSensorStanceEstimatorROS::ForceSensorStanceEstimatorROS(double force_thresh
 {
 }
 
-ForceSensorStanceEstimatorROS::ForceSensorStanceEstimatorROS(ros::NodeHandle &nh)
+ForceSensorStanceEstimatorROS::ForceSensorStanceEstimatorROS(rclcpp::Node::SharedPtr nh)
 {
   // get parameters for the leg odometry
   std::string legodo_prefix = "legodo/";
   double stance_threshold;
-  nh.getParam(legodo_prefix + "stance_threshold", stance_threshold);
+  nh->get_parameter(legodo_prefix + "stance_threshold", stance_threshold);
   force_threshold_ = stance_threshold;
-  ROS_INFO_STREAM("[ForceSensorStanceEstimator] Stance threshold: " << force_threshold_);
+  RCLCPP_INFO_STREAM(nh->get_logger(),"[ForceSensorStanceEstimator] Stance threshold: " << force_threshold_);
 }
 
 }  // namespace quadruped

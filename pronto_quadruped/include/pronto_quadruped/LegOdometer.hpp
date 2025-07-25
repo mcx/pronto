@@ -39,9 +39,11 @@
 #include <pronto_quadruped_commons/leg_vector_map.h>
 #include <pronto_quadruped_commons/forward_kinematics.h>
 #include <pronto_quadruped_commons/feet_jacobians.h>
+#include <vector>
 
 // std
 #include <memory>
+#define WINDOW 10
 
 namespace pronto {
 namespace quadruped {
@@ -85,7 +87,7 @@ public:
       std::cerr << "Function not implemented yet!" << std::endl;
       return false;
     }
-
+    void get_foot_corr(int i, Eigen::Vector3d& vec);
     bool estimateVelocity(const uint64_t utime,
                           const JointState& q,
                           const JointState& qd,
@@ -115,6 +117,9 @@ public:
     void getFeetPositions(LegVectorMap & jd) override;
     virtual LegVectorMap getFootPos();
 
+    void update_moving_mean(Eigen::Vector3d& vec);
+
+
 
     void setInitVelocityCov(const Matrix3d& vel_cov) override;
     void setInitVelocityStd(const Vector3d& vel_std) override;
@@ -130,11 +135,18 @@ public:
     FeetJacobians& getFeetJacobians() const { return feet_jacobians_; }
     ForwardKinematics& getForwardKinematics() const { return forward_kinematics_; }
 
+    Eigen::Vector3d get_odom_corr()
+    {
+        return xd_b_;
+    };
+
 protected:
     FeetJacobians& feet_jacobians_;
     ForwardKinematics& forward_kinematics_;
     bool debug_;
-
+    int claro = 0;
+    int old_leg_count = 0, leg_count= 0;
+    Eigen::Vector3d xd_b_peak = Eigen::Vector3d::Zero();
     SigmaMode s_mode_;
     AverageMode a_mode_;
     Eigen::Vector3d vel_std_ = Eigen::Vector3d::Zero();
@@ -157,10 +169,14 @@ protected:
     LegVectorMap base_vel_leg_;
     LegVectorMap foot_pos_;
 
-    Eigen::Vector3d xd_b_;  ///< estimated velocity, base frame
+    Eigen::Vector3d xd_b_,mov_ave, mov_ave_peak;  ///< estimated velocity, base frame
 
     Eigen::Array4d grf_delta_;
     Eigen::Array4d grf_;
+
+    std::vector<Eigen::Vector3d> moving_average_;
+    int index_ = 0,start_index_ = 0, moving_average_elem_ = 0, count = 0;
+
 
     double speed_limit_; // upper limit of the absolute norm of the linear velocity [m/s]
 };

@@ -26,7 +26,7 @@
 namespace pronto {
 namespace quadruped {
 
-DynamicStanceEstimatorROS::DynamicStanceEstimatorROS(ros::NodeHandle &nh,
+DynamicStanceEstimatorROS::DynamicStanceEstimatorROS(rclcpp::Node::SharedPtr nh,
                                                      InverseDynamicsBase &inverse_dynamics,
                                                      JSIMBase &jsim,
                                                      FeetContactForces &feet_contact_forces,

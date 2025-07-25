@@ -10,6 +10,8 @@ fusion.  It has been used with a variety of inputs from sensors such as IMUs
 (Carnegie Robotics Multisense SL, Intel RealSense) and joint
 kinematics.
 
+For the ROS 1 version, check the ros1 branch of this repository.
+
 ### Legged Robots
 Pronto provided the state estimate that was used by MIT DRC team in the
 DARPA Robotics Challenge to estimate the position and motion of the Boston
@@ -31,10 +33,10 @@ estimation. The modules specific to MAVs (e.g., altimeter, GPS) are not currentl
 
 ## Software Overview
 The algorithms (and their ROS wrappers) are written in C/C++ and organized as
-`catkin` packages.
+`ros` packages.
 The repository consists of the following main modules:
 
-- `pronto_core`: core libraries that implment the filter, the state and
+- `pronto_core`: core libraries that implement the filter, the state, and
 basic measurement modules (e.g., IMU, pose update)
 - `pronto_biped` leg odometry measurement modules for humanoid robots (tested
 on Atlas and Valkyrie)
@@ -46,61 +48,89 @@ quadruped robot. This is a fork of the `iit_commons` package (see
 - `*_ros` ROS wrappers of the above modules
 - other support packages for filtering
 
+For further details, refer to [this](doc/architecture.md).
+
 ## Dependencies
-Pronto depends on Eigen and Boost
+Pronto depends on Eigen and Boost.
 
 ## System Requirements
-The target operating system is **Ubuntu 18.04** equipped with **ROS Melodic**.  
- Other versions of Ubuntu/ROS might work but they are **not** actively supported or tested.
+The target operating system is **Ubuntu 22.04** with **ROS 2 Humble**.
+Other versions of Ubuntu/ROS might work but they are **not** actively supported or tested.
 
 ## Building the Code
-Pronto is organized as a collection of catkin packages. To build the code,
-just run `catkin build` followed by the name of the packages you are 
-interested to build.
+Pronto is organized as a collection of ROS packages.
+To build the code, run
+```shell
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+```
+Then, source the workspace:
+```shell
+source install/setup.bash
+```
+
+## Usage
+
+### Start Estimator
+The estimator node can be started with
+```shell
+ros2 launch  pronto_ros2_node pronto_node.launch.py xacro_pkg:=<robot_description_package> xacro_name:=<xacro_file_name> config_name:=<configuration_file name>
+```
+Where the arguments within `<...>` must be replaced with the actual values.
+
+The config file must be added to the config folder in pronto_ros2_node package.
+
+### Benchmarking
+The Benchmarking launch allows the user to start a list of pronto instance to compare the obtained estimations. The input is a bag contains all the filter measures input, or at least it should be consistent with the configuration files. The configuration files has to be placed into the config folder and named omnicar_tune_i.yaml, each file is associated with a pronto instance.
+The launch file contains the global variable to set the bag name and the list of instance number, subset of the configuration files' list.
+To start the filters the command line is:
+
+```shell
+ros2 launch pronto_ros2_node bench_pronto.launch.py
+```
 
 ## Robot Implementation Example
-To learn how to use Pronto on your robot, you can have a look at [this repository](https://github.com/ori-drs/pronto_anymal_example), which contains a full implementation on the ANYmal quadruped robot. 
+To learn how to use Pronto on your robot, you can have a look at [this repository](https://github.com/ori-drs/pronto_anymal_example), which contains a full implementation on the ANYmal quadruped robot.
 ## Publications
 If you use part of this work in academic context, please cite the following publication:
 
-*M. Camurri, M. Ramezani, S. Nobili, M. Fallon*  
-**Pronto: A Multi-Sensor State Estimator for Legged Robots in Real-World Scenarios**  
+*M. Camurri, M. Ramezani, S. Nobili, M. Fallon*
+**Pronto: A Multi-Sensor State Estimator for Legged Robots in Real-World Scenarios**
 in Frontiers on Robotics and AI, 2020 ([PDF](https://www.frontiersin.org/articles/10.3389/frobt.2020.00068/pdf)) **DOI:** [10.3389/frobt.2020.00068](https://doi.org/10.3389/frobt.2020.00068)
 ```
 @article{camurri2020frontiers,
-  author = {Camurri, Marco and Ramezani, Milad and Nobili, Simona and Fallon, Maurice},   
-  title = {{Pronto: A Multi-Sensor State Estimator for Legged Robots in Real-World Scenarios}},      
+  author = {Camurri, Marco and Ramezani, Milad and Nobili, Simona and Fallon, Maurice},
+  title = {{Pronto: A Multi-Sensor State Estimator for Legged Robots in Real-World Scenarios}},
   journal = {Frontiers in Robotics and AI},
   volume = {7},
   number = {68},
-  pages = {1--18},     
-  year = {2020},      
+  pages = {1--18},
+  year = {2020},
   url = {https://www.frontiersin.org/article/10.3389/frobt.2020.00068},
-  doi = {10.3389/frobt.2020.00068},	
+  doi = {10.3389/frobt.2020.00068},
   issn = {2296-9144}
 }
 ```
 
 ### Previous publications
 
-*S. Nobili, M. Camurri, V. Barasuol, M. Focchi, D.G. Caldwell, C. Semini, M. Fallon*  
-**Heterogeneous Sensor Fusion for Accurate State Estimation of Dynamic Legged Robots**  
+*S. Nobili, M. Camurri, V. Barasuol, M. Focchi, D.G. Caldwell, C. Semini, M. Fallon*
+**Heterogeneous Sensor Fusion for Accurate State Estimation of Dynamic Legged Robots**
 in Proceedings of Robotics: Science and Systems XIII, 2017 ([PDF](http://www.robots.ox.ac.uk/~mobile/drs/Papers/2017RSS_nobili.pdf)) **DOI:** [10.15607/RSS.2017.XIII.007](https://www.doi.org/10.15607/RSS.2017.XIII.007)
 
 ```
 @inproceedings{nobili2017rss,
-    author = {Simona Nobili AND Marco Camurri AND Victor Barasuol AND Michele Focchi AND Darwin Caldwell AND Claudio Semini AND Maurice Fallon}, 
-    title = {{Heterogeneous Sensor Fusion for Accurate State Estimation of Dynamic Legged Robots}}, 
-    booktitle = {Proceedings of Robotics: Science and Systems}, 
-    year = {2017}, 
-    address = {Cambridge, Massachusetts}, 
-    month = {July}, 
-    doi = {10.15607/RSS.2017.XIII.007} 
+    author = {Simona Nobili AND Marco Camurri AND Victor Barasuol AND Michele Focchi AND Darwin Caldwell AND Claudio Semini AND Maurice Fallon},
+    title = {{Heterogeneous Sensor Fusion for Accurate State Estimation of Dynamic Legged Robots}},
+    booktitle = {Proceedings of Robotics: Science and Systems},
+    year = {2017},
+    address = {Cambridge, Massachusetts},
+    month = {July},
+    doi = {10.15607/RSS.2017.XIII.007}
 }
 ```
 
-*M. Camurri, M. Fallon, S. Bazeille, A. Radulescu, V. Barasuol, D.G. Caldwell, C. Semini*  
-**Probabilistic Contact Estimation and Impact Detection for State Estimation of Quadruped Robots**  
+*M. Camurri, M. Fallon, S. Bazeille, A. Radulescu, V. Barasuol, D.G. Caldwell, C. Semini*
+**Probabilistic Contact Estimation and Impact Detection for State Estimation of Quadruped Robots**
 in IEEE Robotics and Automation Letters, vol. 2, no. 2, pp. 1023-1030, April 2017 ([PDF](https://iit-dlslab.github.io/papers/camurri17ral.pdf)) **DOI:** [10.1109/LRA.2017.2652491](https://www.doi.org/10.1109/LRA.2017.2652491)
 
 ```
@@ -117,8 +147,8 @@ in IEEE Robotics and Automation Letters, vol. 2, no. 2, pp. 1023-1030, April 201
       month = {April}}
 ```
 
-*M. Fallon, M. Antone, N. Roy, S. Teller*  
-**Drift-Free Humanoid State Estimation fusing Kinematic, Inertial and LIDAR sensing**  
+*M. Fallon, M. Antone, N. Roy, S. Teller*
+**Drift-Free Humanoid State Estimation fusing Kinematic, Inertial and LIDAR sensing**
 2014 IEEE-RAS International Conference on Humanoid Robots ([PDF](https://www.research.ed.ac.uk/portal/files/18903340/14_fallon_humanoids.pdf)) **DOI:**[10.1109/HUMANOIDS.2014.7041346](https://www.doi.org/10.1109/HUMANOIDS.2014.7041346)
 
 ```
@@ -135,8 +165,8 @@ ISSN={},
 month={Nov},}
 ```
 
-*A. Bry, A. Bachrach, N. Roy*  
-**State Estimation for Aggressive Flight in GPS-Denied Environments Using Onboard Sensing**  
+*A. Bry, A. Bachrach, N. Roy*
+**State Estimation for Aggressive Flight in GPS-Denied Environments Using Onboard Sensing**
 2012 IEEE International Conference on Robotics and Automation ([PDF](https://dspace.mit.edu/bitstream/handle/1721.1/86237/icra12_aggressive_flight.pdf)) **DOI:**[10.1109/ICRA.2012.6225295](https://www.doi.org//10.1109/ICRA.2012.6225295)
 
 ```
@@ -161,8 +191,10 @@ month={May},}
 - Extended to support humanoid motion by Maurice Fallon with the help of
 the [MIT DARPA Robotics Challenge Team](http://www.drc.mit.edu).
 
-- Support for quadruped robots, full ROS conversion and logo design by 
+- Support for quadruped robots, full ROS conversion and logo design by
 Marco Camurri  ([IIT Dynamic Legged System Lab](http://dls.iit.it) and [ORI Dynamic Robot Systems Group](https://ori.ox.ac.uk/labs/drs))
+
+- Ported to ROS 2 by Jacopo Cioni, Francesco Iotti, and Davide De Benedittis from the University of Pisa, under the supervision of Franco Angelini and Manolo Garabini.
 
 ### Additional contributors
 Andy Barry, Pat Marion, Dehann Fourie, Marco Frigerio, Michele Focchi, Benoit Casseau, Russell Buchanan, Wolfgang Merkt
@@ -170,4 +202,3 @@ Andy Barry, Pat Marion, Dehann Fourie, Marco Frigerio, Michele Focchi, Benoit Ca
 ## License
 Pronto is released under the LGPL v2.1 license. Please see the LICENSE file attached to
 this document for more information.
-

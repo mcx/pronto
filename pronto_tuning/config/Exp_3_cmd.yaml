@@ -1,0 +1,59 @@
+command_node:
+  ros__parameters:
+    topic_name: "command"
+    controller_name: "omni_controller/"
+    set_point_list:
+      - start
+      - move_for
+      - straight_1
+      - right
+      - straight_2
+      - left
+      - straight_3
+      - slow_down
+      - stop
+    start:
+      vx: 0.0
+      vy: 0.0
+      omega: 0.0
+      time: 0.0
+    move_for:
+      vx: 0.15
+      vy: 0.0
+      omega: 0.0
+      time: 1.0
+    straight_1:
+      vx: 0.15
+      vy: 0.0
+      omega: 0.0
+      time: 11.0
+    right:
+      vx: 0.15
+      vy: 0.0
+      omega: -0.1
+      time: 16.0
+    straight_2:
+      vx: 0.15
+      vy: 0.0
+      omega: 0.0
+      time: 26.0
+    left:
+      vx: 0.15
+      vy: 0.0
+      omega: 0.1
+      time: 31.0
+    straight_3:
+      vx: 0.15
+      vy: 0.0
+      omega: 0.0
+      time: 41.0
+    slow_down:
+      vx: 0.0
+      vy: 0.0
+      omega: 0.0
+      time: 42.0
+    stop:
+      vx: 0.0
+      vy: 0.0
+      omega: 0.0
+      time: 43.0

@@ -1,6 +1,12 @@
 #include "pronto_core/rbis.hpp"
 #include "pronto_core/rotations.hpp"
 
+#define DEBUG_MODE 0
+
+#if DEBUG_MODE
+#include <iostream>
+#endif
+
 using namespace pronto::rotation;
 using namespace Eigen;
 using namespace std;
@@ -35,7 +41,7 @@ void getIMUProcessLinearizationContinuous(const RBIS & state, RBIM & Ac)
 
 }
 
-#define DEBUG_MODE 0
+
 
 void insUpdateState(const Eigen::Vector3d & gyro,
                     const Eigen::Vector3d & accelerometer,

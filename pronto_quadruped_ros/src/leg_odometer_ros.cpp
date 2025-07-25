@@ -21,21 +21,25 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+
 #include "pronto_quadruped_ros/leg_odometer_ros.hpp"
 
 namespace pronto {
 namespace quadruped {
 
-LegOdometerROS::LegOdometerROS(ros::NodeHandle &nh,
+LegOdometerROS::LegOdometerROS(rclcpp::Node::SharedPtr nh,
                                FeetJacobians &feet_jacobians,
                                ForwardKinematics &forward_kinematics) :
     LegOdometer(feet_jacobians, forward_kinematics), nh_(nh)
 {
     // get parameters for the leg odometry
-    std::string legodo_prefix = "legodo/";
+    std::string legodo_prefix = "legodo.";
     int legodo_mode;
-    if(!nh_.getParam(legodo_prefix + "legodo_mode", legodo_mode)){
-        ROS_WARN_STREAM("Could not get param \"" << legodo_prefix + "legodo_mode\". Using default.");
+
+    nh_->declare_parameter<int>(legodo_prefix + "legodo_mode",0);
+
+    if (!nh_->get_parameter(legodo_prefix + "legodo_mode", legodo_mode)) {
+        RCLCPP_WARN_STREAM(nh_->get_logger(), "Could not get param \"" << legodo_prefix + "legodo_mode\". Using default.");
     }
 
     // # STATIC_SIGMA 0x00, VAR_SIGMA 0x01, IMPACT_SIGMA 0x02, WEIGHTED_AVG 0x04, ALPHA_FILTER : 0x08, KALMAN_FILTER : 0x10

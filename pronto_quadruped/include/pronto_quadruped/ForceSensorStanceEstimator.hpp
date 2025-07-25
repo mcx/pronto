@@ -7,7 +7,7 @@ namespace quadruped {
 
 class ForceSensorStanceEstimator : public StanceEstimatorBase {
 public:
-  ForceSensorStanceEstimator(double /*force_threshold*/ = 50) {
+  ForceSensorStanceEstimator(double force_threshold = 50) {
   }
 
   bool getStance(LegBoolMap &stance) override;
