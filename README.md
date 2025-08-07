@@ -10,7 +10,7 @@ fusion.  It has been used with a variety of inputs from sensors such as IMUs
 (Carnegie Robotics Multisense SL, Intel RealSense) and joint
 kinematics.
 
-For the ROS 1 version, check the ros1 branch of this repository.
+For the ROS 1 version, check the [ros1 branch](https://github.com/ori-drs/pronto/tree/ros1) of this repository.
 
 ### Legged Robots
 Pronto provided the state estimate that was used by MIT DRC team in the
@@ -51,7 +51,7 @@ quadruped robot. This is a fork of the `iit_commons` package (see
 For further details, refer to [this](doc/architecture.md).
 
 ## Dependencies
-Pronto depends on Eigen and Boost.
+Pronto depends on Eigen, Boost and Pinocchio.
 
 ## System Requirements
 The target operating system is **Ubuntu 22.04** with **ROS 2 Humble**.
@@ -90,6 +90,7 @@ ros2 launch pronto_ros2_node bench_pronto.launch.py
 
 ## Robot Implementation Example
 To learn how to use Pronto on your robot, you can have a look at [this repository](https://github.com/ori-drs/pronto_anymal_example), which contains a full implementation on the ANYmal quadruped robot.
+
 ## Publications
 If you use part of this work in academic context, please cite the following publication:
 
@@ -191,8 +192,8 @@ month={May},}
 - Extended to support humanoid motion by Maurice Fallon with the help of
 the [MIT DARPA Robotics Challenge Team](http://www.drc.mit.edu).
 
-- Support for quadruped robots, full ROS conversion and logo design by
-Marco Camurri  ([IIT Dynamic Legged System Lab](http://dls.iit.it) and [ORI Dynamic Robot Systems Group](https://ori.ox.ac.uk/labs/drs))
+- Support for quadruped robots, full ROS 1 conversion and logo design by
+Marco Camurri  ([IIT Dynamic Legged System Lab](http://dls.iit.it) and [ORI Dynamic Robot Systems Group](https://ori.ox.ac.uk/labs/drs)), currently at [IDRA Research group](https://idra-lab.github.io/), University of Trento
 
 - Ported to ROS 2 by Jacopo Cioni, Francesco Iotti, and Davide De Benedittis from the University of Pisa, under the supervision of Franco Angelini and Manolo Garabini.
 
