@@ -26,7 +26,7 @@
 using namespace pronto;
 using namespace pronto::quadruped;
 
-ImuBiasLockROS_Sim::ImuBiasLockROS_Sim(rclcpp::Node::SharedPtr nh) : ImuBiasLockBaseROS(nh){}
+ImuBiasLockROS_Sim::ImuBiasLockROS_Sim(rclcpp::Node::SharedPtr nh, Eigen::Isometry3d ins_to_body) : ImuBiasLockBaseROS(nh,ins_to_body){}
 
 RBISUpdateInterface* ImuBiasLockROS_Sim::processMessage(const sensor_msgs::msg::Imu *msg,
                                                     StateEstimator *est)
@@ -73,7 +73,7 @@ void ImuBiasLockWithAccelerationROS::processSecondaryMessage(const pronto_msgs::
   bias_lock_module_->processSecondaryMessage(bias_lock_js_msg_);
 }
 
-ImuBiasLockROS::ImuBiasLockROS(rclcpp::Node::SharedPtr nh) : ImuBiasLockBaseROS(nh){}
+ImuBiasLockROS::ImuBiasLockROS(rclcpp::Node::SharedPtr nh, Eigen::Isometry3d ins_to_body) : ImuBiasLockBaseROS(nh,ins_to_body){}
 
 RBISUpdateInterface* ImuBiasLockROS::processMessage(const sensor_msgs::msg::Imu *msg,
                                                     StateEstimator *est)

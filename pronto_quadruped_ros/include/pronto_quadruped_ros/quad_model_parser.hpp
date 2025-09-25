@@ -1,5 +1,6 @@
 #include "urdf/model.h"
-
+#include <Eigen/Core>
+#include <Eigen/Dense>
 
 #include <string>
 #include <vector>
@@ -43,6 +44,8 @@ namespace pronto
             ~Model_Parser(){};
 
             Axis_Direction get_ker_dir();
+            
+            void get_imu_base_tranform(std::string base_link, std::string imu_link, Eigen::Isometry3d& tranformation);
 
             int get_robot_DOF()
             {
@@ -62,6 +65,8 @@ namespace pronto
                 for(size_t i = 0; i< jnt_names_.size();i++)
                     jnt_name[i] = jnt_names_[i];
             };
+
+
 
 
         protected:

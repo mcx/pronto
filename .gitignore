@@ -5,3 +5,4 @@ CMakeLists.txt.user
 /log/
 /build/
 pronto_ros2_node/Experiments/
+src/example/pronto_config/bags/

@@ -37,19 +37,15 @@ ImuBiasLock::ImuBiasLock(const Eigen::Isometry3d& ins_to_body,
   // accel bias indices
   z_indices.block<3,1>(3,0) = RBIS::accelBiasInds();
   // roll and pitch indices
-  z_indices.tail<2>(0) << RBIS::chi_ind, RBIS::chi_ind+1;
+  z_indices.tail<2>() << RBIS::chi_ind, RBIS::chi_ind+1;
   gravity_vector_ = Eigen::Vector3d::UnitZ() * g_val;
-
   z_covariance = CovMatrix::Zero();
-
   eps_ = cfg.velocity_threshold_;
   torque_threshold_ = cfg.torque_threshold_;
   dt_ = cfg.dt_;
   debug_ = cfg.verbose_;
-
   bias_transform_ = Eigen::Isometry3d::Identity();
   gravity_transform_ = Eigen::Isometry3d::Identity();
-
   gyro_bias_history_.reserve(max_size + 1);
   accel_bias_history_.reserve(max_size + 1);
 }

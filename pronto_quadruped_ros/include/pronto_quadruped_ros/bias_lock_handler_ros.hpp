@@ -52,7 +52,7 @@ class ImuBiasLockBaseROS : public DualSensingModule<sensor_msgs::msg::Imu, Joint
 {
 public:
     ImuBiasLockBaseROS() = delete;
-    ImuBiasLockBaseROS(rclcpp::Node::SharedPtr nh);
+    ImuBiasLockBaseROS(rclcpp::Node::SharedPtr nh,Eigen::Isometry3d ins_to_body);
     RBISUpdateInterface* processMessage(const sensor_msgs::msg::Imu *msg, StateEstimator *est) /*override*/;
     // tf2_ros::Buffer tfBuffer;
 
@@ -86,7 +86,8 @@ protected:
 };
 
 template <class JointStateT>
-ImuBiasLockBaseROS<JointStateT>::ImuBiasLockBaseROS(rclcpp::Node::SharedPtr nh) : nh_(nh)
+ImuBiasLockBaseROS<JointStateT>::ImuBiasLockBaseROS(rclcpp::Node::SharedPtr nh,
+                                                    Eigen::Isometry3d ins_to_body) : nh_(nh)
 {
     tf2_ros::Buffer tfBuffer(nh_->get_clock());
     tf2_ros::TransformListener tf_imu_to_body_listener_(tfBuffer);
@@ -108,19 +109,19 @@ ImuBiasLockBaseROS<JointStateT>::ImuBiasLockBaseROS(rclcpp::Node::SharedPtr nh) 
     std::string base_frame = "base";
     nh_->get_parameter_or<std::string>(ins_param_prefix + "base_link_name", base_frame, "base");
     RCLCPP_INFO_STREAM(nh_->get_logger(), "[ImuBiasLockBaseROS] Name of base_link: '" << base_frame << "'");
-    Eigen::Isometry3d ins_to_body = Eigen::Isometry3d::Identity();
-    while (rclcpp::ok()) {
-        try {
-            // lookupTransform API is : target_frame, source_frame
-            geometry_msgs::msg::TransformStamped temp_transform = tfBuffer.lookupTransform(base_frame, imu_frame, tf2::TimePointZero);
-            ins_to_body = tf2::transformToEigen(temp_transform.transform);
-            RCLCPP_INFO_STREAM(nh_->get_logger(), "IMU (" << imu_frame << ") to base (" << base_frame << ") transform: translation=(" << ins_to_body.translation().transpose() << "), rotation=(" << ins_to_body.rotation() << ")");
-            break;
-        } catch (const tf2::TransformException& ex) {
-            RCLCPP_ERROR(nh_->get_logger(), "%s", ex.what());
-            rclcpp::sleep_for(std::chrono::seconds(1));
-        }
-    }
+    // Eigen::Isometry3d ins_to_body = Eigen::Isometry3d::Identity();
+    // while (rclcpp::ok()) {
+    //     try {
+    //         // lookupTransform API is : target_frame, source_frame
+    //         geometry_msgs::msg::TransformStamped temp_transform = tfBuffer.lookupTransform(base_frame, imu_frame, tf2::TimePointZero);
+    //         ins_to_body = tf2::transformToEigen(temp_transform.transform);
+    //         RCLCPP_INFO_STREAM(nh_->get_logger(), "IMU (" << imu_frame << ") to base (" << base_frame << ") transform: translation=(" << ins_to_body.translation().transpose() << "), rotation=(" << ins_to_body.rotation() << ")");
+    //         break;
+    //     } catch (const tf2::TransformException& ex) {
+    //         RCLCPP_ERROR(nh_->get_logger(), "%s", ex.what());
+    //         rclcpp::sleep_for(std::chrono::seconds(1));
+    //     }
+    // }
 
     quadruped::ImuBiasLockConfig cfg;
     nh_->get_parameter_or(lock_param_prefix + "torque_threshold", cfg.torque_threshold_, 0.0);
@@ -165,8 +166,9 @@ ImuBiasLockBaseROS<JointStateT>::ImuBiasLockBaseROS(rclcpp::Node::SharedPtr nh) 
         base_arrow_.color.r = 0;
         base_arrow_.color.g = 1;
     }
-
+    std::cerr<<"PDPDPDPDPDPPDP"<<std::endl;
     bias_lock_module_ = std::make_unique<quadruped::ImuBiasLock>(ins_to_body, cfg);
+    std::cerr<<"PDPDPDPDPDPPDP"<<std::endl;
 }
 
 template <class JointStateT>
@@ -268,7 +270,7 @@ bool ImuBiasLockBaseROS<JointStateT>::processMessageInit(
 class ImuBiasLockROS_Sim : public ImuBiasLockBaseROS<sensor_msgs::msg::JointState>
 {
 public:
-    ImuBiasLockROS_Sim(rclcpp::Node::SharedPtr nh);
+    ImuBiasLockROS_Sim(rclcpp::Node::SharedPtr nh, Eigen::Isometry3d ins_to_body);
     virtual ~ImuBiasLockROS_Sim() = default;
 
     RBISUpdateInterface* processMessage(const sensor_msgs::msg::Imu *msg, StateEstimator *est) /*override*/;
@@ -288,7 +290,7 @@ public:
 class ImuBiasLockWithAccelerationROS : public ImuBiasLockBaseROS<pronto_msgs::msg::JointStateWithAcceleration>
 {
 public:
-    ImuBiasLockWithAccelerationROS(rclcpp::Node::SharedPtr nh) : ImuBiasLockBaseROS<pronto_msgs::msg::JointStateWithAcceleration>(nh) {}
+    ImuBiasLockWithAccelerationROS(rclcpp::Node::SharedPtr nh, Eigen::Isometry3d ins_to_body) : ImuBiasLockBaseROS<pronto_msgs::msg::JointStateWithAcceleration>(nh,ins_to_body) {}
     virtual ~ImuBiasLockWithAccelerationROS() = default;
 
     void processSecondaryMessage(const pronto_msgs::msg::JointStateWithAcceleration &msg);
@@ -297,7 +299,7 @@ public:
 class ImuBiasLockROS: public ImuBiasLockBaseROS<pi3hat_moteus_int_msgs::msg::JointsStates>
 {
 public:
-    ImuBiasLockROS(rclcpp::Node::SharedPtr nh);
+    ImuBiasLockROS(rclcpp::Node::SharedPtr nh, Eigen::Isometry3d ins_to_body);
     virtual ~ImuBiasLockROS() = default;
 
     RBISUpdateInterface* processMessage(const sensor_msgs::msg::Imu *msg, StateEstimator *est) /*override*/;

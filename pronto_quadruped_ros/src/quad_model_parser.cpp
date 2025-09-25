@@ -153,4 +153,28 @@ namespace pronto
         return Axis_Direction::error;
     }
 
+    void Model_Parser::get_imu_base_tranform(std::string base_link, std::string imu_link, Eigen::Isometry3d& tranformation)
+    {
+        tranformation = Eigen::Isometry3d();
+        auto imu_link_model =  model_.links_.find(imu_link);
+        if( imu_link_model != model_.links_.end())
+        {
+           if(imu_link_model->second->parent_joint->parent_link_name == base_link)
+           {
+                auto position = imu_link_model->second->parent_joint->parent_to_joint_origin_transform.position;
+                auto rotation = imu_link_model->second->parent_joint->parent_to_joint_origin_transform.rotation;
+
+                tranformation.translation() << position.x,position.y,position.z;
+                Eigen::Quaterniond q(rotation.w,rotation.x,rotation.y,rotation.z);
+                tranformation.linear() = q.toRotationMatrix();
+                
+           }   
+
+           else
+            throw std::runtime_error("URDF ERROR: BASE Declaration");
+        }
+        else
+            throw std::runtime_error("URDF ERROR: IMU Declaration");
+    }
+
 };
