@@ -166,9 +166,7 @@ ImuBiasLockBaseROS<JointStateT>::ImuBiasLockBaseROS(rclcpp::Node::SharedPtr nh,
         base_arrow_.color.r = 0;
         base_arrow_.color.g = 1;
     }
-    std::cerr<<"PDPDPDPDPDPPDP"<<std::endl;
     bias_lock_module_ = std::make_unique<quadruped::ImuBiasLock>(ins_to_body, cfg);
-    std::cerr<<"PDPDPDPDPDPPDP"<<std::endl;
 }
 
 template <class JointStateT>
