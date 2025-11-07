@@ -1,6 +1,10 @@
 ![](pronto_core/doc/pronto_logotype_se.svg)
 
-![CI](https://github.com/ori-drs/pronto/workflows/CI/badge.svg)
+## Updates
+
+**November 2025:** Pronto has been updated to ROS2 with the support of Francesco Iotti and colleagues in Università di Pisa. The `main` branch of the repo targets **ROS 2 Humble**.
+
+For the **ROS 1** version, check out the [ros1 branch](https://github.com/ori-drs/pronto/tree/ros1) of this repository.
 
 ## Introduction
 Pronto is an efficient, versatile and modular EKF state estimator for both
@@ -10,7 +14,7 @@ fusion.  It has been used with a variety of inputs from sensors such as IMUs
 (Carnegie Robotics Multisense SL, Intel RealSense) and joint
 kinematics.
 
-For the ROS 1 version, check the [ros1 branch](https://github.com/ori-drs/pronto/tree/ros1) of this repository.
+
 
 ### Legged Robots
 Pronto provided the state estimate that was used by MIT DRC team in the
