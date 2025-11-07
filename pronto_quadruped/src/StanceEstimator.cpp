@@ -88,15 +88,15 @@ void StanceEstimator::setParams(const std::vector<double> &beta,
 
     switch(mode_) {
     case Mode::THRESHOLD:
-        std::cout << "[ StanceEst ] Mode: THRESHOLD" << std::endl;
-        std::cout << "[ StanceEst ] Force threshold: " << force_threshold_ << std::endl;
+        std::cerr << "[ StanceEst ] Mode: THRESHOLD" << std::endl;
+        std::cerr << "[ StanceEst ] Force threshold: " << force_threshold_ << std::endl;
         break;
     case Mode::HYSTERESIS:
-        std::cout << "[ StanceEst ] Mode: HYSTERESIS" << std::endl;
-        std::cout << "[ StanceEst ] Hysteresis low: " << falling_edge_threshold_ << std::endl;
-        std::cout << "[ StanceEst ] Hysteresis high: " << rising_edge_threshold_ << std::endl;
-        std::cout << "[ StanceEst ] Hysteresis delay low (ns): " << falling_edge_delay_ << std::endl;
-        std::cout << "[ StanceEst ] Hysteresis delay high (ns): " << rising_edge_delay_ << std::endl;
+        std::cerr << "[ StanceEst ] Mode: HYSTERESIS" << std::endl;
+        std::cerr << "[ StanceEst ] Hysteresis low: " << falling_edge_threshold_ << std::endl;
+        std::cerr << "[ StanceEst ] Hysteresis high: " << rising_edge_threshold_ << std::endl;
+        std::cerr << "[ StanceEst ] Hysteresis delay low (ns): " << falling_edge_delay_ << std::endl;
+        std::cerr << "[ StanceEst ] Hysteresis delay high (ns): " << rising_edge_delay_ << std::endl;
         for(size_t i = 0; i < 4; i++){
           force_triggers_[LegID(i)].setParameters(falling_edge_threshold_,
                                                   rising_edge_threshold_,
@@ -105,21 +105,21 @@ void StanceEstimator::setParams(const std::vector<double> &beta,
         }
         break;
     case Mode::REGRESSION:
-        std::cout << "[ StanceEst ] Mode: REGRESSION" << std::endl;
-        std::cout << "[ StanceEst ] Beta: [";
+        std::cerr << "[ StanceEst ] Mode: REGRESSION" << std::endl;
+        std::cerr << "[ StanceEst ] Beta: [";
         for(size_t i = 0; i < beta.size(); i++) {
-            std::cout << beta_[i];
+            std::cerr << beta_[i];
             if(i == beta.size() - 1) {
-                std::cout << "]" << std::endl;
+                std::cerr << "]" << std::endl;
             } else {
-                std::cout << ", ";
+                std::cerr << ", ";
             }
         }
         break;
     }
 }
 
-void StanceEstimator::updateStat(double sample,
+void StanceEstimator::updateState(double sample,
                                  bool is_stance,
                                  int index) {
     if(is_stance) {
@@ -204,6 +204,7 @@ bool StanceEstimator::getStance(LegBoolMap &stance,
             stance_probability[leg_id] = stance[leg_id];
             break;
         case Mode::HYSTERESIS:
+            // std::cerr << "the ground reaction force is "<<grf_[leg_id](Z)<<"and nsec is " << nsec_<<"\n"<<std::endl;
             force_triggers_[leg_id].updateState(nsec_, grf_[leg_id](Z));
             stance[leg_id] = force_triggers_[leg_id].getState();
             stance_probability[leg_id] = stance[leg_id];
@@ -213,6 +214,8 @@ bool StanceEstimator::getStance(LegBoolMap &stance,
             stance[leg_id] = (stance_probability[leg_id] > 0.5 ? true : false);
             break;
         }
+
+        // std::cerr << "the GRF of "<< leg_id << "-th leg is "<< grf_[leg_id].transpose() << " and the stance prob is "<<stance[leg_id]<<std::endl;
     }
     return true;
 }

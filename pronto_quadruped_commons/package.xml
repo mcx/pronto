@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <package format="2">
   <name>pronto_quadruped_commons</name>
   <version>0.3.0</version>
@@ -14,7 +15,11 @@
   <license>LGPLv2.1</license>
   <license>BSD</license>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <test_depend>rostest</test_depend>
+  <!-- <test_depend>rostest</test_depend> -->
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 </package>

@@ -105,6 +105,7 @@ RBISUpdateInterface* ImuBiasLock::processMessage(const ImuMeasurement *msg,
     prior.accelBias() = accel_bias_;
     prior.gyroBias() = gyro_bias_;
 
+
     return new RBISResetUpdate(prior, prior_cov, RBISUpdateInterface::yawlock, prior.utime);
   }
   return nullptr;
@@ -121,8 +122,8 @@ bool ImuBiasLock::processMessageInit(const ImuMeasurement *msg,
 }
 
 void ImuBiasLock::processSecondaryMessage(const pronto::JointState &msg){
-  is_static_ = isStatic(msg);
 
+  is_static_ = isStatic(msg);
   if(do_record_ && !is_static_){
       if (debug_) {
         std::cout << " history is " << gyro_bias_history_.size() << " long\n";
@@ -138,33 +139,37 @@ void ImuBiasLock::processSecondaryMessage(const pronto::JointState &msg){
 bool ImuBiasLock::isStatic(const pronto::JointState &state)
 {
   // check if we are in four contact (poor's man version, knee torque threshold)
-  if(state.joint_effort.size() < 12){
-    std::cerr << "++++++++++++++ not enough joints " << state.joint_effort.size() << " < 12 !!!\n";
-    return false;
+  std::vector<int> indexes = {0,0,0,0};
+  if(state.joint_effort.size() == 12){
+    indexes = {2,8,5,11};
+    // std::cerr << "++++++++++++++ not enough joints " << state.joint_effort.size() << " < 12 !!!\n";
+    // return false;
   }
+  else if(state.joint_effort.size() == 8)
+     indexes = {1,3,5,7};
 
   // TODO: The knee joint order is hard-coded here!
-  if(std::abs(state.joint_effort[2]) < torque_threshold_){
-    if (debug_) std::cout << "++++++++++++++ [LF] not enough torque " << std::abs(state.joint_effort[2]) << " < " << torque_threshold_ << "\n";
+  if(std::abs(state.joint_effort[indexes[0]]) < torque_threshold_){
+    if (debug_) std::cerr << "++++++++++++++ [LF] not enough torque " << std::abs(state.joint_effort[2]) << " < " << torque_threshold_ << "\n";
     return false;
   }
-  if(std::abs(state.joint_effort[5]) < torque_threshold_){
-    if (debug_) std::cout << "++++++++++++++ [RF] not enough torque " << std::abs(state.joint_effort[5]) << " < " << torque_threshold_ << "\n";
+  if(std::abs(state.joint_effort[indexes[1]]) < torque_threshold_){
+    if (debug_) std::cerr << "++++++++++++++ [RF] not enough torque " << std::abs(state.joint_effort[5]) << " < " << torque_threshold_ << "\n";
     return false;
   }
-  if(std::abs(state.joint_effort[8]) < torque_threshold_){
-    if (debug_) std::cout << "++++++++++++++ [LH] not enough torque " << std::abs(state.joint_effort[8]) << " < " << torque_threshold_ << "\n";
+  if(std::abs(state.joint_effort[indexes[2]]) < torque_threshold_){
+    if (debug_) std::cerr << "++++++++++++++ [LH] not enough torque " << std::abs(state.joint_effort[8]) << " < " << torque_threshold_ << "\n";
     return false;
   }
-  if(std::abs(state.joint_effort[11]) < torque_threshold_){
-    if (debug_) std::cout << "++++++++++++++ [RH] not enough torque " << std::abs(state.joint_effort[11]) << " < " << torque_threshold_ << "\n";
+  if(std::abs(state.joint_effort[indexes[3]]) < torque_threshold_){
+    if (debug_) std::cerr << "++++++++++++++ [RH] not enough torque " << std::abs(state.joint_effort[11]) << " < " << torque_threshold_ << "\n";
     return false;
   }
 
   // check that joint velocities are not bigger than eps
   for (auto el : state.joint_velocity){
     if (std::abs(el) > eps_){
-      if (debug_) std::cout << "++++++++++++++ too much velocity " << std::abs(el) << " > " << eps_ << "\n";
+      if (debug_) std::cerr << "++++++++++++++ too much velocity " << std::abs(el) << " > " << eps_ << "\n";
       return false;
     }
   }

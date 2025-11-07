@@ -79,7 +79,7 @@ public:
      * @return A Vector3d expressing the GRF at the foot, expressed in the base
      * frame
      */
-    virtual Vector3d getFootGRF(const JointState& q,
+    Vector3d getFootGRF(const JointState& q,
                                 const JointState& qd,
                                 const JointState& tau,
                                 const Quaterniond& orient,
@@ -90,7 +90,7 @@ public:
                                 const Vector3d& omega = Vector3d::Zero(),
                                 const Vector3d& omegad = Vector3d::Zero()) {
         Vector3d res;
-        (void)getFootGRF(q, qd, tau, orient, leg, res, qdd, xd, xdd, omega, omegad);
+        getFootGRF(q, qd, tau, orient, leg, res, qdd, xd, xdd, omega, omegad);
         return res;
     }
 
@@ -112,7 +112,7 @@ public:
      * @return a boolean indicating whether the computation was successful or
      * not
      */
-    virtual bool getFeetGRF(const JointState& q,
+    bool getFeetGRF(const JointState& q,
                             const JointState& qd,
                             const JointState& tau,
                             const Quaterniond& orient,
@@ -148,7 +148,7 @@ public:
      * @return a data structure which associates the force at the
      * end effector for each leg
      */
-    virtual LegVectorMap getFeetGRF(const JointState& q,
+    LegVectorMap getFeetGRF(const JointState& q,
                                     const JointState& qd,
                                     const JointState& tau,
                                     const Quaterniond& orient,
@@ -158,7 +158,7 @@ public:
                                     const Vector3d& omega = Vector3d::Zero(),
                                     const Vector3d& omegad = Vector3d::Zero()) {
         LegVectorMap res;
-        (void)getFeetGRF(q, qd, tau, orient, res, qdd, xd, xdd, omega, omegad);
+        getFeetGRF(q, qd, tau, orient, res, qdd, xd, xdd, omega, omegad);
         return res;
     }
 

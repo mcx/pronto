@@ -1,11 +1,9 @@
 #include "pronto_ros/pronto_ros_conversions.hpp"
-#include <tf_conversions/tf_eigen.h>
-#include <eigen_conversions/eigen_msg.h>
-#include <sensor_msgs/JointState.h>
+#include <sensor_msgs/msg/joint_state.hpp>
 
 namespace pronto {
 
-void gpsDataFromROS(const pronto_msgs::GPSData &ros_msg,
+void gpsDataFromROS(const pronto_msgs::msg::GPSData &ros_msg,
                     GPSMeasurement &msg)
 {
   msg.elev = ros_msg.elev;
@@ -22,16 +20,16 @@ void gpsDataFromROS(const pronto_msgs::GPSData &ros_msg,
   msg.xyz_pos = Eigen::Map<const Eigen::Vector3d>(ros_msg.xyz_pos.data());
 }
 
-void indexMeasurementFromROS(const pronto_msgs::IndexedMeasurement &ros_msg,
+void indexMeasurementFromROS(const pronto_msgs::msg::IndexedMeasurement &ros_msg,
                              IndexedMeasurement &msg)
 {
   // check that the size of z_indices == z_effective and R_effective is its square
-  if(ros_msg.R_effective.size() != ros_msg.z_effective.size() * ros_msg.z_indices.size()){
+  if (ros_msg.r_effective.size() != ros_msg.z_effective.size() * ros_msg.z_indices.size()) {
     return;
   }
 
   // TODO check that the data are rowmajor
-  msg.R_effective = Eigen::Map<const Eigen::MatrixXd>(ros_msg.R_effective.data(),
+  msg.R_effective = Eigen::Map<const Eigen::MatrixXd>(ros_msg.r_effective.data(),
                                                       ros_msg.z_effective.size(),
                                                       ros_msg.z_effective.size());
   msg.state_utime = ros_msg.state_utime;
@@ -42,52 +40,56 @@ void indexMeasurementFromROS(const pronto_msgs::IndexedMeasurement &ros_msg,
                                                     ros_msg.z_indices.size());
 }
 
-void filterStateFromROS(const pronto_msgs::FilterState &ros_msg,
+void filterStateFromROS(const pronto_msgs::msg::FilterState &ros_msg,
                         FilterState &msg)
 {
-  if(ros_msg.cov.size() != std::pow(ros_msg.state.size(),2))
-  {
+  if (ros_msg.cov.size() != std::pow(ros_msg.state.size(), 2)) {
     throw std::logic_error("Covariance matrix of size " +
                            std::to_string(ros_msg.cov.size()) +
-                           + ". " + std::to_string(std::pow(ros_msg.state.size(),2)) + " expected.");
+                           + ". " + std::to_string(std::pow(ros_msg.state.size(), 2)) + " expected.");
     return;
   }
   Eigen::Quaterniond init_quat;
-  tf::Quaternion q;
-  tf::quaternionMsgToTF(ros_msg.quat, q);
-  tf::quaternionTFToEigen(q, init_quat);
+  quatFromMsg(ros_msg.quat, init_quat);
+  // tf2::convert(ros_msg.quat, init_quat);
   Eigen::Map<const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> cov_map(ros_msg.cov.data(),
                                                                                                    ros_msg.state.size(),
                                                                                                    ros_msg.state.size());
   msg.cov = cov_map;
   msg.quat = init_quat;
   msg.state = Eigen::Map<const Eigen::VectorXd>(ros_msg.state.data(), ros_msg.state.size());
-  msg.utime = ros_msg.header.stamp.toNSec() / 1000;
+  msg.utime = ros_msg.header.stamp.nanosec / 1000;
 }
 
-void msgToImuMeasurement(const sensor_msgs::Imu &imu_msg,
+void msgToImuMeasurement(const sensor_msgs::msg::Imu &imu_msg,
                          ImuMeasurement &imu_meas,
                          const int64_t& utime_offset)
 {
   // convert the ROS message into our internal format
-  tf::vectorMsgToEigen(imu_msg.linear_acceleration,imu_meas.acceleration);
-  tf::quaternionMsgToEigen(imu_msg.orientation, imu_meas.orientation);
-  tf::vectorMsgToEigen(imu_msg.angular_velocity, imu_meas.omega);
-  imu_meas.utime = imu_msg.header.stamp.toNSec() / 1000 + utime_offset;
+  vectFromMsg(imu_msg.linear_acceleration, imu_meas.acceleration);
+  quatFromMsg(imu_msg.orientation, imu_meas.orientation);
+  vectFromMsg(imu_msg.angular_velocity, imu_meas.omega);
+
+  // tf2::convert(imu_msg.linear_acceleration, imu_meas.acceleration);
+  // tf2::convert(imu_msg.orientation, imu_meas.orientation);
+  // tf2::convert(imu_msg.angular_velocity, imu_meas.omega);
+
+  imu_meas.utime = imu_msg.header.stamp.sec*std::pow(10,6) +(int)(imu_msg.header.stamp.nanosec /1000)  + utime_offset;
 }
 
-void poseMsgFromROS(const geometry_msgs::PoseWithCovarianceStamped &msg,
+void poseMsgFromROS(const geometry_msgs::msg::PoseWithCovarianceStamped &msg,
                     PoseMeasurement &pose_meas)
 {
   // covariance is not implemented yet,
   //  we just forward to non covariance overload
-  geometry_msgs::PoseStamped p;
+  geometry_msgs::msg::PoseStamped p;
   p.pose = msg.pose.pose;
   p.header = msg.header;
   poseMsgFromROS(p, pose_meas);
 }
-void poseMsgFromROS(const geometry_msgs::PoseStamped &msg,
-                    PoseMeasurement &pose_meas)
+
+void poseMsgFromROS(const geometry_msgs::msg::PoseStamped &msg,
+                           PoseMeasurement &pose_meas)
 {
   pose_meas.orientation = Orientation(msg.pose.orientation.w,
                                       msg.pose.orientation.x,
@@ -96,13 +98,14 @@ void poseMsgFromROS(const geometry_msgs::PoseStamped &msg,
   pose_meas.pos << msg.pose.position.x,
       msg.pose.position.y,
       msg.pose.position.z;
-  pose_meas.utime = (uint64_t) msg.header.stamp.toNSec() / 1000;
+
+  pose_meas.utime = (int)(msg.header.stamp.nanosec / 1000) + msg.header.stamp.sec * std::pow(10,6);
 }
 
-void poseMeasurementFromROS(const nav_msgs::Odometry &ros_msg,
+void poseMeasurementFromROS(const nav_msgs::msg::Odometry &ros_msg,
                             PoseMeasurement &msg)
 {
-  msg.utime = ros_msg.header.stamp.toNSec() / 1000;
+  msg.utime = ros_msg.header.stamp.nanosec / 1000;
 
   msg.angular_vel << ros_msg.twist.twist.angular.x,
       ros_msg.twist.twist.angular.y,
@@ -115,39 +118,37 @@ void poseMeasurementFromROS(const nav_msgs::Odometry &ros_msg,
   msg.pos << ros_msg.pose.pose.position.x,
       ros_msg.pose.pose.position.y,
       ros_msg.pose.pose.position.z;
-  tf::Quaternion tf_q;
-  tf::quaternionMsgToTF(ros_msg.pose.pose.orientation, tf_q);
-  tf::quaternionTFToEigen(tf_q, msg.orientation);
+
+  // tf2::Quaternion tf_q;
+  // tf2::fromMsg(ros_msg.pose.pose.orientation, tf_q);
+  quatFromMsg(ros_msg.pose.pose.orientation, msg.orientation);
 }
 
-void poseMeasurementFromROS(const geometry_msgs::Pose& ros_msg,
-                            PoseMeasurement &msg) {
-
-}
-
-void rigidTransformFromROS(const geometry_msgs::TransformStamped &msg,
-                           RigidTransform &transf)
+void jointStateFromROS(const sensor_msgs::msg::JointState &ros_msg, JointState &msg)
 {
-  tf::Transform temp_tf_transf_;
-  tf::transformMsgToTF(msg.transform, temp_tf_transf_);
-  tf::transformTFToEigen(temp_tf_transf_, transf.transform);
-  transf.utime = msg.header.stamp.toNSec() / 1000; // from nanosec to microsec
-}
-
-void jointStateFromROS(const sensor_msgs::JointState &ros_msg, JointState &msg){
-  // it is caller's responsibility to check that both joint states have same
-  // size
-  msg.utime = ros_msg.header.stamp.toNSec() / 1000;
+  // it is caller's responsibility to check that both joint states have the same size
+   msg.utime = int(ros_msg.header.stamp.nanosec / 1000 )+ ros_msg.header.stamp.sec * std::pow(10,6);
   msg.joint_position = std::move(ros_msg.position);
   msg.joint_velocity = std::move(ros_msg.velocity);
   msg.joint_effort = std::move(ros_msg.effort);
   msg.joint_name = std::move(ros_msg.name);
 }
 
-void jointStateWithAccelerationFromROS(const pronto_msgs::JointStateWithAcceleration &ros_msg, JointState &msg){
-  // it is caller's responsibility to check that both joint states have same
-  // size
-  msg.utime = ros_msg.header.stamp.toNSec() / 1000;
+
+void JointStatesFromROS(const pi3hat_moteus_int_msgs::msg::JointsStates &ros_msg, JointState &msg)
+{
+  // it is caller's responsibility to check that both joint states have the same size
+  msg.utime = ros_msg.header.stamp.nanosec / 1000 + ros_msg.header.stamp.sec * std::pow(10,6);
+  msg.joint_position = std::move(ros_msg.position);
+  msg.joint_velocity = std::move(ros_msg.velocity);
+  msg.joint_effort = std::move(ros_msg.effort);
+  msg.joint_name = std::move(ros_msg.name);
+}
+
+void jointStateWithAccelerationFromROS(const pronto_msgs::msg::JointStateWithAcceleration &ros_msg, JointState &msg)
+{
+  // it is caller's responsibility to check that both joint states have the same size
+  msg.utime = ros_msg.header.stamp.nanosec / 1000;
   msg.joint_position = std::move(ros_msg.position);
   msg.joint_velocity = std::move(ros_msg.velocity);
   msg.joint_acceleration = std::move(ros_msg.acceleration);
@@ -155,29 +156,33 @@ void jointStateWithAccelerationFromROS(const pronto_msgs::JointStateWithAccelera
   msg.joint_name = std::move(ros_msg.name);
 }
 
-void visualOdometryFromROS(const pronto_msgs::VisualOdometryUpdate& ros_msg,
-                           VisualOdometryUpdate& msg){
-  msg.curr_utime = ros_msg.curr_timestamp.toNSec() / 1000;
+void visualOdometryFromROS(const pronto_msgs::msg::VisualOdometryUpdate& ros_msg,
+                           VisualOdometryUpdate& msg)
+{
+  msg.curr_utime = ros_msg.curr_timestamp.nanosec / 1000;
   msg.status = ros_msg.estimate_status;
-  msg.prev_utime = ros_msg.prev_timestamp.toNSec() / 1000;
-  tf::transformMsgToEigen(ros_msg.relative_transform, msg.relative_pose);
-  msg.pose_covariance = Eigen::Map<const PoseCovariance, Eigen::Unaligned>(ros_msg.covariance.data(),6,6);
+  msg.prev_utime = ros_msg.prev_timestamp.nanosec / 1000;
+  msg.relative_pose = transfToEigen(ros_msg.relative_transform);
+  // tf2::fromMsg(ros_msg.relative_transform, msg.relative_pose);
+  msg.pose_covariance = Eigen::Map<const PoseCovariance, Eigen::Unaligned>(ros_msg.covariance.data(), 6, 6);
 }
 
-void lidarOdometryFromROS(const pronto_msgs::LidarOdometryUpdate &ros_msg,
+void lidarOdometryFromROS(const pronto_msgs::msg::LidarOdometryUpdate &ros_msg,
                           LidarOdometryUpdate &msg)
 {
-  msg.curr_utime = ros_msg.curr_timestamp.toNSec() / 1000;
-  msg.prev_utime = ros_msg.prev_timestamp.toNSec() / 1000;
-  tf::transformMsgToEigen(ros_msg.relative_transform, msg.relative_pose);
-  msg.pose_covariance = Eigen::Map<const PoseCovariance, Eigen::Unaligned>(ros_msg.covariance.data(),6,6);
+  msg.curr_utime = ros_msg.curr_timestamp.nanosec / 1000;
+  msg.prev_utime = ros_msg.prev_timestamp.nanosec / 1000;
+  msg.relative_pose = transfToEigen(ros_msg.relative_transform);
+  // tf2::fromMsg(ros_msg.relative_transform, msg.relative_pose);
+  msg.pose_covariance = Eigen::Map<const PoseCovariance, Eigen::Unaligned>(ros_msg.covariance.data(), 6, 6);
 }
 
-void forceTorqueFromROS(const pronto_msgs::BipedForceTorqueSensors& ros_msg,
-                        pronto::ForceTorqueSensorArray& msg) {
+void forceTorqueFromROS(const pronto_msgs::msg::BipedForceTorqueSensors& ros_msg,
+                        pronto::ForceTorqueSensorArray& msg)
+{
   msg.num_sensors = 4;
   msg.names = {"l_foot", "r_foot", "l_hand", "r_hand"};
-  msg.utime = ros_msg.header.stamp.toNSec() * 1e-3;
+  msg.utime = ros_msg.header.stamp.nanosec * 1e-3;
   msg.sensors.resize(msg.num_sensors);
   pronto::ForceTorqueSensor ft;
   ft.utime = msg.utime;
@@ -213,5 +218,4 @@ void forceTorqueFromROS(const pronto_msgs::BipedForceTorqueSensors& ros_msg,
   ft.moment[2] = ros_msg.r_hand.torque.z;
   msg.sensors[3] = ft;
 }
-
 }

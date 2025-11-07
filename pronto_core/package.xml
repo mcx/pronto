@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
-<package>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
   <name>pronto_core</name>
   <version>0.3.0</version>
   <description>
@@ -13,10 +14,16 @@
   
   <maintainer email="mfallon@robots.ox.ac.uk">Maurice Fallon</maintainer>
   <maintainer email="mcamurri@robots.ox.ac.uk">Marco Camurri</maintainer>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <depend>Eigen3</depend>
+  <depend>rclcpp</depend>
 
   <license>LGPLv2.1</license>
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
 
-  <buildtool_depend>catkin</buildtool_depend>
-  <test_depend>rosunit</test_depend>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 </package>
