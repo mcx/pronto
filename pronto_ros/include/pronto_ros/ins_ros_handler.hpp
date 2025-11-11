@@ -7,7 +7,7 @@
 namespace pronto{
     class InsHandlerROS : public SensingModule<sensor_msgs::msg::Imu>{
         public:
-        InsHandlerROS(rclcpp::Node::SharedPtr nh);
+        InsHandlerROS(rclcpp::Node::SharedPtr nh, Eigen::Isometry3d ins_to_body);
 
         RBISUpdateInterface* processMessage(const sensor_msgs::msg::Imu *imu_msg, StateEstimator *est) override;
 

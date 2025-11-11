@@ -19,6 +19,7 @@
 
 #include <pinocchio/parsers/urdf.hpp>
 #include <pinocchio/algorithm/kinematics.hpp>
+#include "pinocchio/algorithm/model.hpp"
 
 
 #include "pronto_quadruped_ros/quad_model_parser.hpp"
@@ -89,6 +90,77 @@ namespace pronto
                 bool roll_forward = false;
                 bool publish_head = false;
                 std::string topic;
+                Eigen::VectorXd reference_config;
+                // parse the urdf to get imu base tf
+                auto mod_parse_ = std::make_unique<Model_Parser>(urdf_file_);
+                int dof;
+                Axis_Direction ax_ker;
+                // pinocchio::urdf::buildModelFromXML(urdf_file_,pinocchio::JointModel::fl)
+                try
+                {
+                    dof = mod_parse_->get_robot_DOF();
+                    ax_ker = mod_parse_->get_ker_dir();
+                    if(ax_ker == Axis_Direction::error)
+                    {
+                        throw(std::logic_error("not correct xacro file"));
+                    }
+                    RCLCPP_INFO_STREAM(get_logger(),"The parse robot has "<<dof<<" DOF and "<<
+                    ax_ker<<" as kernel direction ");
+                }
+                catch(const std::exception& e)
+                {
+                    RCLCPP_ERROR_STREAM(get_logger() ,e.what());
+                    throw(std::logic_error("not correct xacro file"));
+                }
+                std::vector<std::string> jnt_n =  {
+                                                    "LF_HAA",
+                                                    "LF_HFE",
+                                                    "LF_KFE",
+                                                    "RF_HAA",
+                                                    "RF_HFE",
+                                                    "RF_KFE",
+                                                    "LH_HAA",
+                                                    "LH_HFE",
+                                                    "LH_KFE",
+                                                    "RH_HAA",
+                                                    "RH_HFE",
+                                                    "RH_KFE"
+                                                }, jnt_pin ;
+                std::vector<pinocchio::JointIndex> pin_jnt_ind;
+                
+                std::vector<int> conv_pro2pin;
+                jnt_pin.resize(dof);
+                conv_pro2pin.resize(dof);
+                mod_parse_->get_jnt_names(jnt_pin);
+                bool exist;
+                for(size_t i = 0; i < jnt_n.size(); i++)
+                {
+                    exist = false;
+                    for(size_t j = 0; j < jnt_pin.size(); j++)
+                    {
+                        if(jnt_n[i].compare(jnt_pin[j])==0)
+                        {
+                            conv_pro2pin[j] = i;
+                            exist = true;
+                        }
+
+                    }
+                    if(!exist)
+                    {
+                        RCLCPP_WARN(get_logger(),"Joint %s is not cointaned into Pinocchio joints list",jnt_n[i].c_str());
+                        if(!(i == 0 || i== 3 || i == 6 || i== 9))
+                            throw(std::logic_error("error in URDF joints nomenclature"));
+                    }
+                
+
+                }
+                RCLCPP_ERROR(this->get_logger(),"%d",conv_pro2pin.size());
+                for(size_t i = 0; i< dof ; i++)
+                {
+                    RCLCPP_INFO(get_logger(),"%s--%s--%d",jnt_n[conv_pro2pin[i]].c_str(),jnt_pin[i].c_str(),conv_pro2pin[i]);
+                }
+                pinocchio::urdf::buildModelFromXML(urdf_file_,root_fb,model_);
+                
 
                 // create front end
                 ros_fe_ = std::make_shared<pronto::ROSFrontEnd>(this->shared_from_this(),true);
@@ -99,7 +171,6 @@ namespace pronto
                     declare_parameter<bool>(*it + ".roll_forward_on_receive",false);
                     declare_parameter<bool>(*it + ".publish_head_on_message",false);
                     declare_parameter<std::string>(*it + ".topic","");
-
 
                     if (!this->get_parameter(*it + ".roll_forward_on_receive", roll_forward)) {
                         RCLCPP_WARN_STREAM(this->get_logger(),"Not adding sensor \"" << *it << "\".");
@@ -120,19 +191,32 @@ namespace pronto
                     init = (std::find(init_sensors_.begin(), init_sensors_.end(), *it) != init_sensors_.end());
                     active = (std::find(active_sensors_.begin(), active_sensors_.end(), *it) != active_sensors_.end());
 
-
                     // add sensor module to front end
                     if (it->compare("ins") == 0)
                     {
-                            ins_handler_ = std::make_shared<InsHandlerROS>(this->shared_from_this());
-                            if (active)
-                            {
-                                ros_fe_->addSensingModule(*ins_handler_, *it, roll_forward, publish_head, topic, subscribe);
-                            }
-                            if (init)
-                            {
-                                ros_fe_->addInitModule(*ins_handler_, *it, topic, subscribe);
-                            }
+                        const std::string ins_param_prefix = "ins.";
+                        std::string imu_frame = "imu";
+                        std::string base_frame = "base_link";
+                        Eigen::Isometry3d i2bl_trans;
+                        
+                        // get the urdf imu and base link name 
+                        this->declare_parameter<std::string>(ins_param_prefix + "frame",imu_frame); 
+                        this->declare_parameter<std::string>(ins_param_prefix + "base_link_name",base_frame);
+                        imu_frame = this->get_parameter(ins_param_prefix + "frame").as_string();
+                        base_frame = this->get_parameter(ins_param_prefix +"base_link_name").get_value<std::string>();
+                        
+                        mod_parse_->get_imu_base_tranform(base_frame,imu_frame,i2bl_trans);
+
+                        
+                        ins_handler_ = std::make_shared<InsHandlerROS>(this->shared_from_this(), i2bl_trans);
+                        if (active)
+                        {
+                            ros_fe_->addSensingModule(*ins_handler_, *it, roll_forward, publish_head, topic, subscribe);
+                        }
+                        if (init)
+                        {
+                            ros_fe_->addInitModule(*ins_handler_, *it, topic, subscribe);
+                        }
 
                     }
                     else if (it->compare("legodo") == 0)
@@ -141,87 +225,16 @@ namespace pronto
                         declare_parameter<bool>(*it + ".sim",false);
                         bool sim ;
                         get_parameter(*it+".sim",sim);
-                        auto mod_parse_ = std::make_unique<Model_Parser>(urdf_file_);
-                        int dof;
-                        Axis_Direction ax_ker;
-                        // pinocchio::urdf::buildModelFromXML(urdf_file_,pinocchio::JointModel::fl)
-                        try
-                        {
-                            dof = mod_parse_->get_robot_DOF();
-                            ax_ker = mod_parse_->get_ker_dir();
-                            if(ax_ker == Axis_Direction::error)
-                            {
-                                throw(std::logic_error("not correct xacro file"));
-                            }
-                            RCLCPP_INFO_STREAM(get_logger(),"The parse robot has "<<dof<<" DOF and "<<
-                            ax_ker<<" as kernel direction ");
-                        }
-                        catch(const std::exception& e)
-                        {
-                           RCLCPP_ERROR_STREAM(get_logger() ,e.what());
-                           throw(std::logic_error("not correct xacro file"));
-                        }
-                        std::vector<std::string> jnt_n =  {
-                                                            "LF_HAA",
-                                                            "LF_HFE",
-                                                            "LF_KFE",
-                                                            "RF_HAA",
-                                                            "RF_HFE",
-                                                            "RF_KFE",
-                                                            "LH_HAA",
-                                                            "LH_HFE",
-                                                            "LH_KFE",
-                                                            "RH_HAA",
-                                                            "RH_HFE",
-                                                            "RH_KFE"
-                                                        }, jnt_pin ;
-                        std::vector<int> conv_pro2pin;
-                        jnt_pin.resize(dof);
-                        conv_pro2pin.resize(dof);
-                        mod_parse_->get_jnt_names(jnt_pin);
-                        bool exist;
-                        for(size_t i = 0; i < jnt_n.size(); i++)
-                        {
-                            exist = false;
-                            for(size_t j = 0; j < jnt_pin.size(); j++)
-                            {
-                                if(jnt_n[i].compare(jnt_pin[j])==0)
-                                {
-                                    conv_pro2pin[j] = i;
-                                    exist = true;
-                                }
-
-                            }
-                            if(!exist)
-                            {
-                                RCLCPP_WARN(get_logger(),"Joint %s is not cointaned into Pinocchio joints list",jnt_n[i].c_str());
-                                if(!(i == 0 || i== 3 || i == 6 || i== 9))
-                                    throw(std::logic_error("error in URDF joints nomenclature"));
-                            }
-
-
-                        }
-                            for(size_t i = 0; i< dof ; i++)
-                        {
-                            RCLCPP_INFO(get_logger(),"%s--%s--%d",jnt_n[conv_pro2pin[i]].c_str(),jnt_pin[i].c_str(),conv_pro2pin[i]);
-                        }
-                        pinocchio::urdf::buildModelFromXML(urdf_file_,root_fb,model_);
+                        
                         feet_force_ = pronto_pinocchio::Pinocchio_Feet_Force(model_,ax_ker,dof,conv_pro2pin);
                         jacs_ = pronto_pinocchio::Pinocchio_Jacobian(&feet_force_);
                         fk_ = pronto_pinocchio::Pinocchio_FK(&feet_force_);
 
                         stance_est_ = std::make_shared<quadruped::StanceEstimatorROS>(shared_from_this(),feet_force_);
                         leg_odom_ = std::make_shared<quadruped::LegOdometerROS>(shared_from_this(),jacs_,fk_);
-
-                        //                                 RCLCPP_INFO(get_logger(),"aaaa");
-
-
-
-
                         if(sim)
                             lo_pin_handler_sim_ = std::make_shared<quadruped::LegodoHandlerPinRos_Sim>(shared_from_this(),stance_est_.get(),leg_odom_.get(),jnt_n);
                         else
-
                             lo_pin_handler_ = std::make_shared<quadruped::LegodoHandlerPinRos>(shared_from_this(),stance_est_.get(),leg_odom_.get(),jnt_n);
                         if (active)
                             {
@@ -246,12 +259,23 @@ namespace pronto
                         std::string sec_topic;
                         get_parameter(*it+".sim",sim);
                         get_parameter(*it + ".secondary_topic",sec_topic);
+                        const std::string ins_param_prefix = "ins.";
+                        std::string imu_frame = "imu";
+                        std::string base_frame = "base_link";
+                    
+                        Eigen::Isometry3d i2bl_trans;
+                        
+                        // get the urdf imu and base link name
+                        imu_frame = this->get_parameter(ins_param_prefix + "frame").as_string();
+                        base_frame = this->get_parameter(ins_param_prefix +"base_link_name").get_value<std::string>();
+                        
+                        mod_parse_->get_imu_base_tranform(base_frame,imu_frame,i2bl_trans);
 
                      if(sim)
-                            ibl_handler_sim_ = std::make_shared<quadruped::ImuBiasLockROS_Sim>(shared_from_this());
+                            ibl_handler_sim_ = std::make_shared<quadruped::ImuBiasLockROS_Sim>(shared_from_this(),i2bl_trans);
                         else
 
-                            ibl_handler_ = std::make_shared<quadruped::ImuBiasLockROS>(shared_from_this());
+                            ibl_handler_ = std::make_shared<quadruped::ImuBiasLockROS>(shared_from_this(),i2bl_trans);
 
                         if (active)
                             {
@@ -328,7 +352,6 @@ namespace pronto
                 pronto_pinocchio::Pinocchio_Jacobian jacs_;
                 pronto_pinocchio::Pinocchio_FK fk_;
                 pinocchio::Model model_;
-                pinocchio::Data data_;
 
 
                 //declare shared ptr to proprioceptive sensors handler

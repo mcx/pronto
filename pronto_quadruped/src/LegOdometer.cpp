@@ -246,55 +246,17 @@ bool LegOdometer::estimateVelocity(const uint64_t utime,
     } else if(a_mode_ == AverageMode::SIMPLE_AVG){
         // Computing average velocity
         for(int i = 0; i < 4; i++) {
-            // std::cerr<<" the stance leg "<<i<<"-th leg is "<< stance_legs[i]<<std::endl;
+            
             if(stance_legs[i]) {
                 xd_b_ += base_vel_leg_[i];
                 leg_count++;
 
             }
-            // std::cerr<<"iteration is "<<i<<std::endl;
-
-            // std::cerr<<" xd_b_ is "<< xd_b_ << std::endl;
+         
         }
-        // if(leg_count != 0)
-        //   std::cerr<<" leg count is "<< leg_count<<std::endl;
-
-
-        // if(leg_count == 1 || leg_count == 3) {
-        //     xd_b_ = old_xd_b;
-        // }
-        // std::cerr<< "the leg count is "<< leg_count<<std::endl;
-        // if(leg_count != 2 && leg_count != 4)
-        // {
-        //   std::cerr<<" the old leg count is "<<old_leg_count<<std::endl;
-        //   if(old_leg_count == 2 || old_leg_count == 4)
-        //   {
-        //     xd_b_peak = old_xd_b;
-        //     std::cerr<<" x_peak has been updated : "<<xd_b_peak<<std::endl;
-        //   }
-        //   xd_b_ = xd_b_peak;
-        // }
-
-        // std::cerr << stance_legs << std::endl << stance_legs[0] + stance_legs[1] + stance_legs[2] + stance_legs[3]<< std::endl;
-
-        // std::cerr<< "PDPDPPDPDPDPPDPDPD"<<std::endl;
-        // if(stance_legs[0] + stance_legs[1] + stance_legs[2] + stance_legs[3] == 4)
-        // {
-        //   std::cerr << "leg count è uno devo tornare false PDPDPDPDPD"<<std::endl;
-
-        // }
+   
         if(leg_count == 0) {
-            // if(leg_count == 1)
-            // {
-            //   std::cerr<<"at time "
-            // }
-
-            // if(count == 0)
-            // {
-            //   xd_b_peak = old_xd_b;
-            //   count ++;
-            // }
-            // xd_b_ = xd_b_peak;
+            //
             return false;
         }
 
@@ -312,35 +274,6 @@ bool LegOdometer::estimateVelocity(const uint64_t utime,
 
 
 
-        // mov_ave = xd_b_;
-        // update_moving_mean(mov_ave);
-        // // xd_b_ = mov_ave;
-        // // std::cerr << " average value is "<< mov_ave(0)<<" meanwhile xb value is "<< xd_b_(0)<<" mean substitution index "<< claro<< std::endl<<std::endl;
-        // if(std::abs(xd_b_(0) - old_xd_b(0)) > 0.01)
-        // {
-        //   if(count == 0)
-        //   {
-        //       mov_ave_peak = mov_ave;
-        //       std::cerr<< "update peak average"<< mov_ave_peak.norm() <<std::endl;
-        //       count ++;
-        //   }
-        //   // if((old_leg_count == 2 || old_leg_count == 4))
-        //   // {
-        //   //   xd_b_peak = old_xd_b;
-        //   // }
-        //   // std::cerr<< "hold the old correction "<< claro<< " act value.norm: "<<xd_b_.norm()<< " old value: "<<old_xd_b.norm()  <<std::endl;
-
-        //   xd_b_ = mov_ave_peak;
-        //   claro++;
-        // }
-        // else
-        //   count = 0;
-        // std::cerr<< "hold the old correction "<< claro<< " act value.norm: "<<xd_b_.norm()<< " old value: "<<old_xd_b.norm()  <<std::endl;
-
-        // if(xd_b_.norm() > 0.05)
-        // {
-
-        // }
         if(xd_b_.norm() > 10){
           std::cerr << "+++++++++++++++++++++ABNORMAL VELOCITY: " << std::endl;
           Eigen::IOFormat clean(4, 0, ", ", "\n", "[", "]");

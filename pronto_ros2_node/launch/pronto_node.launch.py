@@ -23,7 +23,7 @@ def generate_launch_description():
     config_name_arg = DeclareLaunchArgument("config_name",default_value="pronto_mulinex.yaml")
     node_name_arg = DeclareLaunchArgument("node_name",default_value="pronto_node")
     topic_name_arg = DeclareLaunchArgument("topic_name",default_value="pose_est")
-    v_topic_name_arg = DeclareLaunchArgument("topic_name",default_value="twist_est")
+    v_topic_name_arg = DeclareLaunchArgument("v_topic_name",default_value="twist_est")
     xacro_file_path = PathJoinSubstitution([
         FindPackageShare(xacro_pkg_value),
        'urdf', xacro_name_value

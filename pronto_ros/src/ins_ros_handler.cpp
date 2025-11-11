@@ -8,14 +8,14 @@
 namespace pronto {
 
 
-InsHandlerROS::InsHandlerROS(rclcpp::Node::SharedPtr nh) : nh_(nh)
+InsHandlerROS::InsHandlerROS(rclcpp::Node::SharedPtr nh, Eigen::Isometry3d ins_to_body) : nh_(nh)
 {
     tf2::BufferCore tf_imu_to_body_buffer_;
     tf2_ros::TransformListener tf_imu_to_body_listener_(tf_imu_to_body_buffer_);
-    //allocate params
+    // //allocate params
     const std::string ins_param_prefix = "ins.";
-    std::string imu_frame = "imu";
-    std::string base_frame = "base_link";
+    // std::string imu_frame = "imu";
+    // std::string base_frame = "base_link";
 
     InsConfig cfg;
     std::vector<double> accel_bias_initial_v;
@@ -27,8 +27,7 @@ InsHandlerROS::InsHandlerROS(rclcpp::Node::SharedPtr nh) : nh_(nh)
     double std_accel_bias = 0;
 
     //declare params
-    nh_->declare_parameter<std::string>(ins_param_prefix + "frame",imu_frame);
-    nh_->declare_parameter<std::string>(ins_param_prefix + "base_link_name",base_frame);
+    
     nh_->declare_parameter<int>(ins_param_prefix + "num_to_init",cfg.num_to_init);
     nh_->declare_parameter<bool>(ins_param_prefix + "accel_bias_update_online",cfg.accel_bias_update_online);
     nh_->declare_parameter<bool>(ins_param_prefix + "gyro_bias_update_online",cfg.gyro_bias_update_online);
@@ -47,31 +46,29 @@ InsHandlerROS::InsHandlerROS(rclcpp::Node::SharedPtr nh) : nh_(nh)
 
 
 
-    // get_params and allocate ins handler
 
-    imu_frame = nh_->get_parameter(ins_param_prefix + "frame").as_string();
-    base_frame = nh_->get_parameter(ins_param_prefix +"base_link_name").get_value<std::string>();
+    
 
-    RCLCPP_INFO_STREAM(nh_->get_logger(),
-        "[InsHandlerROS] Name of base_link: "
-        << base_frame);
-    Eigen::Isometry3d ins_to_body = Eigen::Isometry3d::Identity();
-    while (rclcpp::ok()) {
-        try {
-            geometry_msgs::msg::TransformStamped temp_transform = tf_imu_to_body_buffer_.lookupTransform(base_frame, imu_frame, tf2::TimePointZero);
-            // ins_to_body = tf2::transformToEigen(temp_transform.transform);
-            ins_to_body = transfToEigen(temp_transform.transform);
-            RCLCPP_INFO_STREAM(nh_->get_logger(),
-                "IMU (" << imu_frame << ") to base (" << base_frame
-                << ") transform: translation=(" << ins_to_body.translation().transpose()
-                << "), rotation=(" << ins_to_body.rotation() << ")");
-            break;
-        }
-        catch (const tf2::TransformException& ex) {
-            RCLCPP_ERROR(nh_->get_logger(), "%s", ex.what());
-            rclcpp::sleep_for(std::chrono::seconds(1));
-        }
-    }
+    // RCLCPP_INFO_STREAM(nh_->get_logger(),
+    //     "[InsHandlerROS] Name of base_link: "
+    //     << base_frame);
+    // Eigen::Isometry3d ins_to_body = Eigen::Isometry3d::Identity();
+    // while (rclcpp::ok()) {
+    //     try {
+    //         geometry_msgs::msg::TransformStamped temp_transform = tf_imu_to_body_buffer_.lookupTransform(base_frame, imu_frame, tf2::TimePointZero);
+    //         // ins_to_body = tf2::transformToEigen(temp_transform.transform);
+    //         ins_to_body = transfToEigen(temp_transform.transform);
+    //         RCLCPP_INFO_STREAM(nh_->get_logger(),
+    //             "IMU (" << imu_frame << ") to base (" << base_frame
+    //             << ") transform: translation=(" << ins_to_body.translation().transpose()
+    //             << "), rotation=(" << ins_to_body.rotation() << ")");
+    //         break;
+    //     }
+    //     catch (const tf2::TransformException& ex) {
+    //         RCLCPP_ERROR(nh_->get_logger(), "%s", ex.what());
+    //         rclcpp::sleep_for(std::chrono::seconds(1));
+    //     }
+    // }
 
 
 
