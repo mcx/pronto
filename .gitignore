@@ -1,3 +1,8 @@
 **build/
 CMakeLists.txt.user
 .vscode/
+/install/
+/log/
+/build/
+pronto_ros2_node/Experiments/
+src/example/pronto_config/bags/

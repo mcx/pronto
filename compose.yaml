@@ -1,0 +1,57 @@
+services:
+  pronto_ros2_humble:
+    build:
+      context: ./DockerFiles
+      dockerfile: Dockerfile
+      args:
+        - WORKSPACE=docker_pronto_ws
+
+    container_name: pronto_docker
+    network_mode: "host"
+    # Interactive shell settings
+    stdin_open: true
+    tty: true
+    # Network settings
+
+    # Environment variables
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - XAUTHORITY=/tmp/.docker.xauth
+      - ROS_DOMAIN_ID=0
+      # Shell history
+      - HISTFILE=/home/ros/.bash_history
+      - HISTFILESIZE=10000
+      - RCUTILS_COLORIZED_OUTPUT=1
+    privileged: true  # Fixed spelling and removed duplicate
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # - /tmp/.docker.xauth:/tmp/.docker.xauth:rw
+      - ~/.bash_history:/home/ros/.bash_history
+      - .:/home/ros/docker_pronto_ws/src
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-modeset:/dev/nvidia-modeset
+      - /dev:/dev
+      
+      
+      
+
+    # Command to source ROS2 environment and start shell
+    command: >
+      bash -c "
+      sudo apt update --fix-missing &&
+        source /opt/ros/humble/setup.bash &&
+        if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then \
+        sudo rosdep init \
+        fi &&
+        vcs import < ~/docker_pronto_ws/src/ros2_interfaces_repository.repos &&
+        rosdep update &&
+        echo 'ROS2 humble environment loaded' &&
+        bash
+      "
+
+
+ 
+
+    

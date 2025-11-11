@@ -9,7 +9,7 @@ enum class ViconMode {MODE_POSITION,
 
 struct ViconConfig{
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    ViconMode mode;
+    ViconMode mode = ViconMode::MODE_POSITION;
     Transform body_to_vicon = Transform::Identity();
     /**
      * @brief r_vicon_xyz standard deviation for position in meters
@@ -31,6 +31,7 @@ public:
     using IndexVector = Eigen::Matrix<int, Eigen::Dynamic, 1, 0, 6, 1>;
     using CovMatrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, 0, 6 ,6>;
 public:
+    ViconModule();
     ViconModule(const ViconConfig& cfg);
 
     RBISUpdateInterface* processMessage(const RigidTransform *msg,

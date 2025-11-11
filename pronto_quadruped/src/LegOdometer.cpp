@@ -26,6 +26,7 @@
 #include <iit/rbd/utils.h>
 #include <boost/math/distributions/normal.hpp>
 #include <sstream>
+#include <cmath>
 
 namespace pronto {
 
@@ -42,26 +43,28 @@ LegOdometer::LegOdometer(FeetJacobians &feet_jacobians,
     xd_b_(Eigen::Vector3d::Zero()),
     speed_limit_(12.42) // set speed limit to Usain Bolt's sprint record, Berlin August 16th, 2009
 {
+  moving_average_.resize(WINDOW);
+  mov_ave.setZero();
 }
 
 LegOdometer::~LegOdometer() {
 }
 
 void LegOdometer::setMode(const SigmaMode s_mode, const AverageMode a_mode) {
-  std::cout << "[ LegOdometer ] Sigma Mode changed to: ";
+  std::cerr << "[ LegOdometer ] Sigma Mode changed to: ";
 
   switch(s_mode){
   case SigmaMode::STATIC_SIGMA:
-    std::cout << "Static Sigma" << std::endl;
+    std::cerr << "Static Sigma" << std::endl;
     break;
   case SigmaMode::VAR_SIGMA:
-    std::cout << "Var Sigma" << std::endl;
+    std::cerr << "Var Sigma" << std::endl;
     break;
   case SigmaMode::VAR_AND_IMPACT_SIGMA:
-    std::cout << "Var and Impact Sigma" << std::endl;
+    std::cerr << "Var and Impact Sigma" << std::endl;
     break;
   case SigmaMode::IMPACT_SIGMA:
-    std::cout << "Impact Sigma" << std::endl;
+    std::cerr << "Impact Sigma" << std::endl;
     break;
   default:
     throw std::runtime_error("Unknown SigmaMode");
@@ -69,13 +72,13 @@ void LegOdometer::setMode(const SigmaMode s_mode, const AverageMode a_mode) {
   }
 
   s_mode_ = s_mode;
-  std::cout << "[ LegOdometer ] Average Mode changed to: ";
+  std::cerr << "[ LegOdometer ] Average Mode changed to: ";
   switch (a_mode) {
   case AverageMode::SIMPLE_AVG:
-    std::cout << "Simple Average" << std::endl;
+    std::cerr << "Simple Average" << std::endl;
     break;
   case AverageMode::WEIGHTED_AVG:
-    std::cout << "Weighted Average" << std::endl;
+    std::cerr << "Weighted Average" << std::endl;
     break;
   default:
     throw std::runtime_error("Unknown AverageMode");
@@ -132,10 +135,10 @@ void LegOdometer::setInitVelocityStd(const Eigen::Vector3d& vel_std){
     vel_std_ = initial_vel_std_;
     initial_vel_cov_ = vel_std.array().square().matrix().asDiagonal();
     Eigen::IOFormat clean_fmt(4, 0, ", ", "\n", "[", "]");
-    std::cout << "Set Initial standard deviation: " << std::endl;
-    std::cout << initial_vel_std_.format(clean_fmt) << std::endl;
-    std::cout << "Set Initial covariance: " << std::endl;
-    std::cout << initial_vel_cov_.format(clean_fmt) << std::endl;
+    std::cerr << "Set Initial standard deviation: " << std::endl;
+    std::cerr << initial_vel_std_.format(clean_fmt) << std::endl;
+    std::cerr << "Set Initial covariance: " << std::endl;
+    std::cerr << initial_vel_cov_.format(clean_fmt) << std::endl;
 }
 
 void LegOdometer::setInitPositionCov(const Eigen::Matrix3d& pos_cov){
@@ -159,21 +162,55 @@ bool LegOdometer::estimateVelocity(const uint64_t utime,
                                    Vector3d &velocity,
                                    Matrix3d &covariance)
 {
+    // Eigen::Vector3d mov_ave;
+    // mov_ave.setZero();
     vel_cov_ = initial_vel_cov_;
 
     // Recording foot position and base velocity from legs
+    // JointState prova = JointState(1,2,3,4,5,6,7,8,9,10,11,12);
+    // for(int leg = LF; leg <= RH; leg++)
+    // {
+
+    // }
+    // std::cerr << "the qdot estimate vel are "<< qd.transpose()<<std::endl;
     foot_pos_ = forward_kinematics_.getFeetPos(q);
     for(int leg = LF; leg <= RH; leg++){
+        // auto qd_block = qd.block<3,1>(leg * 3, 0);
+
+
         base_vel_leg_[LegID(leg)] = - feet_jacobians_.getFootJacobian(q, LegID(leg))
-                            * qd.block<3,1>(leg * 3, 0)
-                            - omega.cross(foot_pos_[LegID(leg)]);
+                            * qd.block<3,1>(leg * 3, 0) ; //+ Eigen::Vector3d(0.4,0.0,0.0);
+                              - omega.cross(foot_pos_[LegID(leg)]);
+
+        // base_vel_leg_[LegID(leg)] = -feet_jacobians_.getFootJacobian(q,LegID(leg)).block
+        //                       - omega.cross(foot_pos_[LegID(leg)]);
+        // std::cerr<< " the "<<leg<<"-th jacbian is "<<std::endl
+        // for(int p = 0 ; p< 3; p++)
+        // {
+        //   base_vel_leg_[LegID(leg)](p) = std::fabs( base_vel_leg_[LegID(leg)](p));
+        // }
+    // std::cerr << " the "<<leg<<"-th jacobian is "<<std::endl<<feet_jacobians_.getFootJacobian(q, LegID(leg))<<std::endl;
+    // if(leg == LegID::LF)
+    //   std::cerr<<"the block data "<<leg <<"are "<<std::endl<<qd.block<3,1>(leg * 3, 0)<<std::endl;
+    // std::cerr<<"the computation is "<<leg <<"is "<<std::endl<<-((base_vel_leg_[LegID(leg)]))<std::endl;
+    // std::cerr << " the "<< leg<<"-th leg est_vel is "<<base_vel_leg_[LegID(leg)].transpose()<< "and the stance prob is "<< stance_legs[leg]<<std::endl;
+    // std::cerr << " the "<<leg<<"-th jacobian is "<<std::endl<<feet_jacobians_.getFootJacobian(q, LegID(leg))<<std::endl;
+    // std::cerr << " the "<<leg<<"-th qdot are "<<std::endl<<qd.block<3,1>(leg * 3, 0)<<std::endl;
+    // std::cerr << " the "<<leg<<"-th q are "<<std::endl<<q.block<3,1>(leg * 3, 0)<<std::endl;
+    // std::cerr << "the FK of "<<leg<<"-th leg is "<< foot_pos_[leg].transpose()<<std::endl;
+    // std::cerr<< leg<< "-th the jacobian part is " <<  feet_jacobians_.getFootJacobian(q, LegID(leg))<<std::endl<<std::endl;
     }
 
+    // std::cerr<< "FL correction by Jacobian " << base_vel_leg_[LegID(0)].transpose()<< std::endl;
+    // std::cerr<< "FR correction by Jacobian " << base_vel_leg_[LegID(1)].transpose()<< std::endl<< std::endl;
     Eigen::Vector3d old_xd_b = xd_b_;
     xd_b_.setZero();
+    old_leg_count = leg_count;
+    // std::cerr<<"old is "<<old_leg_count<<" "<<leg_count<<std::endl;
     // If we want to perform weighted average over legs depending on the
     // probabilities of contact
-    int leg_count = 0;
+    leg_count = 0;
+
 
     Eigen::Vector3d var_velocity = Eigen::Vector3d::Zero();
 
@@ -186,7 +223,7 @@ bool LegOdometer::estimateVelocity(const uint64_t utime,
             }
         }
 
-        if(leg_count == 0) {
+        if(leg_count == 0 || leg_count == 1) {
             return false;
         }
 
@@ -209,16 +246,34 @@ bool LegOdometer::estimateVelocity(const uint64_t utime,
     } else if(a_mode_ == AverageMode::SIMPLE_AVG){
         // Computing average velocity
         for(int i = 0; i < 4; i++) {
+            
             if(stance_legs[i]) {
                 xd_b_ += base_vel_leg_[i];
                 leg_count++;
+
             }
+         
         }
+   
         if(leg_count == 0) {
+            //
             return false;
         }
 
-        xd_b_ /= (double)leg_count;
+        else if(leg_count == 1)
+        {
+
+          return false;
+        }
+
+        else
+        {
+          count = 0;
+          xd_b_ /= (double)leg_count;
+        }
+
+
+
         if(xd_b_.norm() > 10){
           std::cerr << "+++++++++++++++++++++ABNORMAL VELOCITY: " << std::endl;
           Eigen::IOFormat clean(4, 0, ", ", "\n", "[", "]");
@@ -237,12 +292,11 @@ bool LegOdometer::estimateVelocity(const uint64_t utime,
         }
         var_velocity /= (double)leg_count;
     }
-
+    // std::cerr << " mean Odometry correction "<<xd_b_.transpose()<<std::endl;
     double alpha = 0.4;
     double beta = 0.3;
     double gamma = 0.8;
     double delta = 0.5;
-
     if(s_mode_ == SigmaMode::VAR_SIGMA) {
         // Compute the new sigma based on the covariance over stance legs.
         // leave unchanged if only one leg is on the ground!
@@ -321,10 +375,15 @@ bool LegOdometer::estimateVelocity(const uint64_t utime,
     if(!vel_cov_.allFinite()){
         vel_cov_ = initial_vel_cov_;
     }
-
+    // std::cerr << " mean Odometry correction "<<xd_b_.transpose()<<std::endl;
     velocity = xd_b_;
+
     covariance = vel_cov_;
     return true;
+}
+void LegOdometer::get_foot_corr(int i, Eigen::Vector3d& vec)
+{
+    vec = base_vel_leg_[LegID(i)];
 }
 
 LegVectorMap LegOdometer::getFootPos() {
@@ -339,6 +398,35 @@ void LegOdometer::setGrf(const LegVectorMap &grf){
   Eigen::Array4d prev_grf_ = grf_;
   grf_ << grf[LF](2), grf[RF](2), grf[LH](2), grf[RH](2);
   grf_delta_ = grf_ - prev_grf_;
+}
+
+void LegOdometer::update_moving_mean(Eigen::Vector3d& vec)
+{
+    if(moving_average_elem_ < WINDOW)
+    {
+      moving_average_[index_] = vec;
+      moving_average_elem_ ++;
+      index_ ++;
+      // std::cerr << "insert vec at index "<< index_<< " vec value is "<< vec.transpose()<<std::endl;
+      vec.setZero();
+
+    }
+    else
+    {
+      // std::cerr<<"the new value is "<<vec.transpose()<<std::endl;
+      index_ = (index_+1)%WINDOW;
+      start_index_ = (start_index_+1)%WINDOW;
+      moving_average_[index_] = vec;
+      vec.setZero();
+      for(int i = 0; i < WINDOW; i++)
+      {
+        // std::cerr<<"index "<< i << "vector is "<<moving_average_[i].transpose()<<std::endl;
+        vec += moving_average_[i];
+      }
+      vec /= (double)WINDOW;
+      // std::cerr << "insert vec at index "<< index_<< " average value is "<< vec.norm()<<std::endl;
+    }
+
 }
 
 }  // namespace pronto

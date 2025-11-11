@@ -92,12 +92,8 @@ bool InsModule::processMessageInit(const ImuMeasurement * msg,
 
     RBISIMUProcessStep * update = dynamic_cast<RBISIMUProcessStep *>(processMessage(msg, NULL));
 
-    //force the INS to go last
-    if(!allInitializedExcept(sensors_initialized, "ins")){
-      return false;
-    }
-
     init_counter++;
+
     // TODO not using magnetometer, sending zero
     // Eigen::Vector3d mag_vec(ins_to_body.rotation() * Eigen::Map<const Eigen::Vector3d>(msg->mag));
 
@@ -144,42 +140,52 @@ bool InsModule::processMessageInitCommon(const std::map<std::string, bool> & sen
               max_initial_gyro_bias);
       ins_gyro_bias_est = Eigen::Vector3d(0,0,0);
     }
+    // if the orientation is not initialized by motion tracker module use imu and magnetometer
+    std::cerr<<"The qualysis mt is active: "<< sensors_initialized.count("qualysis_mt")<<std::endl;
+    if(sensors_initialized.count("qualysis_mt")==0)
+      {
+      std::cerr <<"the estimate g is "<<ins_g_vec_est.transpose()<< " and its norm is " << ins_g_vec_est.norm()<<std::endl;
+      //set orientation
+      Eigen::Quaterniond quat_g_vec;
+      quat_g_vec.setFromTwoVectors(ins_g_vec_est, -Eigen::Vector3d::UnitZ()); //the gravity vector points in the negative z axis
 
-    //set orientation
-    Eigen::Quaterniond quat_g_vec;
-    quat_g_vec.setFromTwoVectors(ins_g_vec_est, -Eigen::Vector3d::UnitZ()); //the gravity vector points in the negative z axis
+      Eigen::Vector3d g_vec_rpy = (rotation::getEulerAngles(quat_g_vec) * 180.0 / M_PI);
+      fprintf(stderr, "Roll, Pitch Initialized from INS: %f, %f \n", g_vec_rpy(0), g_vec_rpy(1));
+      fprintf(stderr, "Yaw from INS: %f, \n", g_vec_rpy(2));
 
-    Eigen::Vector3d g_vec_rpy = (rotation::getEulerAngles(quat_g_vec) * 180.0 / M_PI);
-    fprintf(stderr, "Roll, Pitch Initialized from INS: %f, %f \n", g_vec_rpy(0), g_vec_rpy(1));
-    fprintf(stderr, "Yaw from INS: %f, \n", g_vec_rpy(2));
+      init_state.orientation() = init_state.orientation() * quat_g_vec;
+      init_cov.block<2, 2>(RBIS::chi_ind, RBIS::chi_ind) = default_cov.block<2, 2>(
+          RBIS::chi_ind, RBIS::chi_ind);
 
-    init_state.orientation() = init_state.orientation() * quat_g_vec;
-    init_cov.block<2, 2>(RBIS::chi_ind, RBIS::chi_ind) = default_cov.block<2, 2>(
-        RBIS::chi_ind, RBIS::chi_ind);
+      init_state.gyroBias() = ins_gyro_bias_est;
+      init_cov.block<3, 3>(RBIS::gyro_bias_ind, RBIS::gyro_bias_ind) = default_cov.block<3, 3>(
+          RBIS::gyro_bias_ind, RBIS::gyro_bias_ind);
+      fprintf(stderr, "gyro bias using INS: %f,%f,%f\n", init_state.gyroBias()(0),
+          init_state.gyroBias()(1), init_state.gyroBias()(2));
 
-    init_state.gyroBias() = ins_gyro_bias_est;
-    init_cov.block<3, 3>(RBIS::gyro_bias_ind, RBIS::gyro_bias_ind) = default_cov.block<3, 3>(
-        RBIS::gyro_bias_ind, RBIS::gyro_bias_ind);
-    fprintf(stderr, "gyro bias using INS: %f,%f,%f\n", init_state.gyroBias()(0),
-        init_state.gyroBias()(1), init_state.gyroBias()(2));
+      // if the sensor is initialized with the gps we align the yaw from it
+      if (sensors_initialized.count("gps") > 0 ) {
+        Eigen::Vector3d ins_mag_vec_est = mag_vec_sum / (double) init_counter;
+        ins_mag_vec_est(2) = 0; //make sure we're only trying to align in the xy plane
 
-    // if the sensor is initialized with the gps we align the yaw from it
-    if (sensors_initialized.count("gps") > 0 ) {
-      Eigen::Vector3d ins_mag_vec_est = mag_vec_sum / (double) init_counter;
-      ins_mag_vec_est(2) = 0; //make sure we're only trying to align in the xy plane
+        Eigen::Quaterniond quat_mag;
+        quat_mag.setFromTwoVectors(ins_mag_vec_est, Eigen::Vector3d::UnitY()); //in ENU, the magnetic vector should be aligned with Y axis
 
-      Eigen::Quaterniond quat_mag;
-      quat_mag.setFromTwoVectors(ins_mag_vec_est, Eigen::Vector3d::UnitY()); //in ENU, the magnetic vector should be aligned with Y axis
+        init_state.orientation() = quat_mag * init_state.orientation();
 
-      init_state.orientation() = quat_mag * init_state.orientation();
+        init_cov(RBIS::chi_ind + 2, RBIS::chi_ind + 2) = default_cov(RBIS::chi_ind + 2,
+            RBIS::chi_ind + 2);
 
-      init_cov(RBIS::chi_ind + 2, RBIS::chi_ind + 2) = default_cov(RBIS::chi_ind + 2,
-          RBIS::chi_ind + 2);
-
-      Eigen::Vector3d mag_vec_rpy = (rotation::getEulerAngles(quat_mag) * 180.0 / M_PI);
-      fprintf(stderr, "Yaw Initialized from INS: %f\n", mag_vec_rpy(2));
+        Eigen::Vector3d mag_vec_rpy = (rotation::getEulerAngles(quat_mag) * 180.0 / M_PI);
+        fprintf(stderr, "Yaw Initialized from INS: %f\n", mag_vec_rpy(2));
+      }
     }
-
+    else
+    {
+      Eigen::Vector3d vicon_init_ori = (rotation::getEulerAngles(init_state.orientation()) * 180.0 / M_PI);
+      fprintf(stderr, "Roll, Pitch Initialized from INS: %f, %f \n", vicon_init_ori(0), vicon_init_ori(1));
+      fprintf(stderr, "Yaw from INS: %f, \n", vicon_init_ori(2));
+    }
     if(accel_bias_recalc_at_start) {
         std::cout << "Estimated initial accel bias as: " << init_state.accelBias().transpose() << std::endl;
         accel_bias_initial = init_state.accelBias();
@@ -189,6 +195,9 @@ bool InsModule::processMessageInitCommon(const std::map<std::string, bool> & sen
         std::cout << "Estimated initial gyro bias as: " << init_state.gyroBias().transpose() << std::endl;
         gyro_bias_initial = init_state.gyroBias();
     }
+
+    // fprintf(stderr, "the initial gyro and acceleration bias are [%f,%f,%f] and  [%f,%f,%f]\n", gyro_bias_initial(0), gyro_bias_initial(1), gyro_bias_initial(2),
+    // accel_bias_initial(0),accel_bias_initial(1),accel_bias_initial(2));
 
     init_state.gyroBias() = gyro_bias_initial;
     init_state.accelBias() = accel_bias_initial;

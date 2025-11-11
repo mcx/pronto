@@ -3,6 +3,10 @@
 
 namespace pronto {
 
+ViconModule::ViconModule()
+{
+};
+
 ViconModule::ViconModule(const ViconConfig &cfg) :
     mode(cfg.mode),
     body_to_vicon(cfg.body_to_vicon)
