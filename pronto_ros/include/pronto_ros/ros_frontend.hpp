@@ -1,24 +1,27 @@
 #pragma once
-
-#include <pronto_core/sensing_module.hpp>
-#include <pronto_core/state_est.hpp>
-#include <pronto_core/rotations.hpp>
+#include "pronto_core/sensing_module.hpp"
+#include "pronto_core/state_est.hpp"
+#include "pronto_core/rotations.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/imu.hpp>
+#include "sensor_msgs/msg/imu.hpp"
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
+// #include "tf2_eigen/tf2_eigen.hpp" // modified
+// #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Vector3.h>
+// #include <tf2/convert.h>
 #include <chrono>
-#include <tf2_ros/transform_broadcaster.h>
+#include "tf2_ros/transform_broadcaster.h"
 #include <string>
 #include <cstdlib>
+#include <type_traits>
 #include <vector>
 #include <cxxabi.h>
 #include <nav_msgs/msg/path.hpp>
-#include <Eigen/Eigen>
-#include <rclcpp/qos.hpp>
+#include <eigen3/Eigen/Eigen>
+#include "rclcpp/qos.hpp"
 
 template<typename T>
 std::string type_name()
@@ -35,9 +38,28 @@ std::string type_name()
 
 namespace pronto {
 
+namespace detail {
+template<typename MsgT, typename = void>
+struct has_header : std::false_type {};
+
+template<typename MsgT>
+struct has_header<MsgT, std::void_t<decltype(std::declval<MsgT&>().header)>>
+    : std::true_type {};
+
+template<typename MsgT>
+void stamp_message_if_header(MsgT& msg, const rclcpp::Time& stamp)
+{
+    if constexpr (has_header<MsgT>::value) {
+        if (msg.header.stamp.sec == 0 && msg.header.stamp.nanosec == 0) {
+            msg.header.set__stamp(stamp);
+        }
+    }
+}
+}  // namespace detail
+
 inline void BlockToVector3d(const Eigen::Block<Eigen::VectorXd, 3, 1> in, geometry_msgs::msg::Vector3 & out)
 {
-
+    
     out.x = in(0);
     out.y = in(1);
     out.z = in(2);
@@ -83,9 +105,8 @@ public:
         if (!subscribe) {
             return;
         }
-
-        rclcpp::QoS qos(10);
-        qos.reliability(rclcpp::ReliabilityPolicy::Reliable);
+        
+        auto qos = rclcpp::SensorDataQoS();
         RCLCPP_INFO_STREAM(nh_->get_logger(), sensor_id << " subscribing to " << topic
                                                       << " with SecondaryMsgT = " << type_name<SecondaryMsgT>());
         secondary_subscribers_[sensor_id] = nh_->create_subscription<SecondaryMsgT>(
@@ -118,11 +139,11 @@ public:
     }
 
     template <class MsgT>
-    void initCallback(std::shared_ptr<MsgT > msg,
+    void initCallback(std::shared_ptr<MsgT > msg, 
                         const SensorId& Key);
 
     template <class PrimaryMsgT, class SecondaryMsgT>
-    void secondaryCallback(std::shared_ptr<SecondaryMsgT > msg,
+    void secondaryCallback(std::shared_ptr<SecondaryMsgT > msg, 
                             const SensorId& sensor_id);
 
     template <class MsgT>
@@ -190,8 +211,7 @@ void ROSFrontEnd::addInitModule(SensingModule<MsgT>& module,
     }
     RCLCPP_INFO_STREAM(nh_->get_logger(), "Sensor init id: " << sensor_id);
     RCLCPP_INFO_STREAM(nh_->get_logger(), "Topic: " << topic);
-    rclcpp::QoS qos(10);
-    qos.reliability(rclcpp::ReliabilityPolicy::Reliable);
+    auto qos = rclcpp::SensorDataQoS();
     // add the sensor to the list of sensor that require initialization
     std::pair<SensorId, bool> init_id_pair(sensor_id, false);
     initialized_list_.insert(init_id_pair);
@@ -201,8 +221,8 @@ void ROSFrontEnd::addInitModule(SensingModule<MsgT>& module,
     std::pair<SensorId, void*> pair(sensor_id, (void*)&module);
     init_modules_.insert(pair);
     if (subscribe) {
-        RCLCPP_ERROR_STREAM(nh_->get_logger(), sensor_id << " subscribing to " << topic);
-        RCLCPP_ERROR_STREAM(nh_->get_logger(), " with MsgT = " << type_name<MsgT>());
+        RCLCPP_INFO_STREAM(nh_->get_logger(), sensor_id << " subscribing to " << topic);
+        RCLCPP_INFO_STREAM(nh_->get_logger(), " with MsgT = " << type_name<MsgT>());
         init_subscribers_[sensor_id] = nh_->create_subscription<MsgT>(
             topic, qos,
             [this, sensor_id](typename MsgT::UniquePtr msg) {
@@ -229,8 +249,7 @@ void ROSFrontEnd::addSensingModule(SensingModule<MsgT>& module,
     RCLCPP_INFO_STREAM(nh_->get_logger(), "Roll forward: " << (roll_forward ? "yes" : "no"));
     RCLCPP_INFO_STREAM(nh_->get_logger(), "Publish head: " << (publish_head ? "yes" : "no"));
     RCLCPP_INFO_STREAM(nh_->get_logger(), "Topic: " << topic);
-    rclcpp::QoS qos(10);
-    qos.reliability(rclcpp::ReliabilityPolicy::Reliable);
+    auto qos = rclcpp::SensorDataQoS();
     // store the will to roll forward when the message is received
     std::pair<SensorId, bool> roll_pair(sensor_id, roll_forward);
     roll_forward_.insert(roll_pair);
@@ -246,8 +265,8 @@ void ROSFrontEnd::addSensingModule(SensingModule<MsgT>& module,
     active_modules_.insert(pair);
     // subscribe the generic templated callback for all modules
     if (subscribe) {
-        RCLCPP_ERROR_STREAM(nh_->get_logger(), sensor_id << " subscribing to " << topic
-                                                         << " with MsgT = " << type_name<MsgT>());
+        RCLCPP_INFO_STREAM(nh_->get_logger(), sensor_id << " subscribing to " << topic
+                                                        << " with MsgT = " << type_name<MsgT>());
         sensors_subscribers_[sensor_id] = nh_->create_subscription<MsgT>(
             topic, qos,
             [this, sensor_id](typename MsgT::UniquePtr msg) {
@@ -265,7 +284,7 @@ void ROSFrontEnd::initCallback(std::shared_ptr<MsgT> msg, const SensorId& sensor
     }
     if(initialized_list_.count(sensor_id) > 0 && !initialized_list_[sensor_id])
     {
-       msg->header.set__stamp(nh_->get_clock()->now());
+        detail::stamp_message_if_header(*msg, nh_->get_clock()->now());
         initialized_list_[sensor_id] = static_cast<SensingModule<MsgT>*>(init_modules_[sensor_id])->processMessageInit(
             msg.get(),
             initialized_list_,
@@ -311,7 +330,7 @@ void ROSFrontEnd::callback(std::shared_ptr<MsgT> msg, const SensorId& sensor_id)
         // appropriate casting to the right type and call to the process message
         // function to get the update
         // Record start time
-       msg->header.set__stamp(nh_->get_clock()->now());
+        detail::stamp_message_if_header(*msg, nh_->get_clock()->now());
 #if DEBUG_MODE
         auto start = std::chrono::high_resolution_clock::now();
 #endif
@@ -408,7 +427,7 @@ void ROSFrontEnd::callback(std::shared_ptr<MsgT> msg, const SensorId& sensor_id)
 
             // fill in message position
             BlockToPoint(head_state.position(), pose_msg_.pose.pose.position);
-
+            
             // fill in message orientation
             // pose_msg_.pose.pose.orientation = tf2::toMsg(head_state.orientation()); // this is a quaternion
             QuaternionToMsg(head_state.orientation(), pose_msg_.pose.pose.orientation);
@@ -450,7 +469,7 @@ void ROSFrontEnd::callback(std::shared_ptr<MsgT> msg, const SensorId& sensor_id)
 
 template <class PrimaryMsgT, class SecondaryMsgT>
 void ROSFrontEnd::secondaryCallback(std::shared_ptr<SecondaryMsgT > msg, const SensorId& sensor_id)
-{
+{    
    msg->header.set__stamp(nh_->get_clock()->now());
     auto a = dynamic_cast<DualSensingModule<PrimaryMsgT,SecondaryMsgT>*>(static_cast<SensingModule<PrimaryMsgT>*>(active_modules_[sensor_id]));
     a->processSecondaryMessage(*msg);
