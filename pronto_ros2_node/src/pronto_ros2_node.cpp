@@ -36,7 +36,6 @@ namespace pronto
         class Pronto_Ros2 : public rclcpp::Node
         {
             using SensorList = std::vector<std::string>;
-            using SensorSet = std::unordered_set<std::string>;
             public:
             Pronto_Ros2():
             Node("Pronto_ROS2_Node")
@@ -69,13 +68,17 @@ namespace pronto
                 RCLCPP_INFO_STREAM(get_logger(),init_sensors_.size()<<" "<<active_sensors_.size());
                 for(auto &init:init_sensors_)
                 {
-                    all_sensors_.insert(init);
+                    all_sensors_.push_back(init);
                     RCLCPP_INFO_STREAM(get_logger(),"Init sensor "<<init.c_str());
                 }
                 for(auto &active:active_sensors_)
                 {
                     RCLCPP_INFO_STREAM(get_logger(),"Active sensor "<<active.c_str());
-                    all_sensors_.insert(active);
+                    // Only add if not already in the list
+                    if(std::find(all_sensors_.begin(), all_sensors_.end(), active) == all_sensors_.end())
+                    {
+                        all_sensors_.push_back(active);
+                    }
                 }
 
 
@@ -165,34 +168,35 @@ namespace pronto
                 // create front end
                 ros_fe_ = std::make_shared<pronto::ROSFrontEnd>(this->shared_from_this(),true);
 
-                for (SensorSet::iterator it = all_sensors_.begin(); it != all_sensors_.end(); ++it)
+                for (size_t idx = 0; idx < all_sensors_.size(); ++idx)
                 {
-                    RCLCPP_INFO(get_logger(),"allocate sensor %s",it->c_str());
-                    declare_parameter<bool>(*it + ".roll_forward_on_receive",false);
-                    declare_parameter<bool>(*it + ".publish_head_on_message",false);
-                    declare_parameter<std::string>(*it + ".topic","");
+                    const auto& sensor_name = all_sensors_[idx];
+                    RCLCPP_INFO(get_logger(),"allocate sensor %s",sensor_name.c_str());
+                    declare_parameter<bool>(sensor_name + ".roll_forward_on_receive",false);
+                    declare_parameter<bool>(sensor_name + ".publish_head_on_message",false);
+                    declare_parameter<std::string>(sensor_name + ".topic","");
 
-                    if (!this->get_parameter(*it + ".roll_forward_on_receive", roll_forward)) {
-                        RCLCPP_WARN_STREAM(this->get_logger(),"Not adding sensor \"" << *it << "\".");
+                    if (!this->get_parameter(sensor_name + ".roll_forward_on_receive", roll_forward)) {
+                        RCLCPP_WARN_STREAM(this->get_logger(),"Not adding sensor \"" << sensor_name << "\".");
                         RCLCPP_WARN(this->get_logger(), "Param \"roll_forward_on_receive\" not available.");
                         continue;
                     }
-                    if (!this->get_parameter(*it + ".publish_head_on_message", publish_head)) {
-                        RCLCPP_WARN_STREAM(this->get_logger(),"Not adding sensor \"" << *it << "\".");
+                    if (!this->get_parameter(sensor_name + ".publish_head_on_message", publish_head)) {
+                        RCLCPP_WARN_STREAM(this->get_logger(),"Not adding sensor \"" << sensor_name << "\".");
                         RCLCPP_WARN(this->get_logger(), "Param \"publish_head_on_message\" not available.");
                         continue;
                     }
-                    if (!this->get_parameter(*it + ".topic", topic)) {
-                        RCLCPP_WARN_STREAM(this->get_logger(),"Not adding sensor \"" << *it << "\".");
+                    if (!this->get_parameter(sensor_name + ".topic", topic)) {
+                        RCLCPP_WARN_STREAM(this->get_logger(),"Not adding sensor \"" << sensor_name << "\".");
                         RCLCPP_WARN(this->get_logger(), "Param \"topic\" not available.");
                         continue;
                     }
                     // check if the sensor is also used to initialize
-                    init = (std::find(init_sensors_.begin(), init_sensors_.end(), *it) != init_sensors_.end());
-                    active = (std::find(active_sensors_.begin(), active_sensors_.end(), *it) != active_sensors_.end());
+                    init = (std::find(init_sensors_.begin(), init_sensors_.end(), sensor_name) != init_sensors_.end());
+                    active = (std::find(active_sensors_.begin(), active_sensors_.end(), sensor_name) != active_sensors_.end());
 
                     // add sensor module to front end
-                    if (it->compare("ins") == 0)
+                    if (sensor_name.compare("ins") == 0)
                     {
                         const std::string ins_param_prefix = "ins.";
                         std::string imu_frame = "imu";
@@ -211,20 +215,20 @@ namespace pronto
                         ins_handler_ = std::make_shared<InsHandlerROS>(this->shared_from_this(), i2bl_trans);
                         if (active)
                         {
-                            ros_fe_->addSensingModule(*ins_handler_, *it, roll_forward, publish_head, topic, subscribe);
+                            ros_fe_->addSensingModule(*ins_handler_, sensor_name, roll_forward, publish_head, topic, subscribe);
                         }
                         if (init)
                         {
-                            ros_fe_->addInitModule(*ins_handler_, *it, topic, subscribe);
+                            ros_fe_->addInitModule(*ins_handler_, sensor_name, topic, subscribe);
                         }
 
                     }
-                    else if (it->compare("legodo") == 0)
+                    else if (sensor_name.compare("legodo") == 0)
                     {
                         //try to make the model and the pinocchio's matrix
-                        declare_parameter<bool>(*it + ".sim",false);
+                        declare_parameter<bool>(sensor_name + ".sim",false);
                         bool sim ;
-                        get_parameter(*it+".sim",sim);
+                        get_parameter(sensor_name+".sim",sim);
                         
                         feet_force_ = pronto_pinocchio::Pinocchio_Feet_Force(model_,ax_ker,dof,conv_pro2pin);
                         jacs_ = pronto_pinocchio::Pinocchio_Jacobian(&feet_force_);
@@ -239,26 +243,26 @@ namespace pronto
                         if (active)
                             {
                                 if(sim)
-                                    ros_fe_->addSensingModule(*lo_pin_handler_sim_, *it, roll_forward, publish_head, topic, subscribe);
+                                    ros_fe_->addSensingModule(*lo_pin_handler_sim_, sensor_name, roll_forward, publish_head, topic, subscribe);
                                 else
-                                    ros_fe_->addSensingModule(*lo_pin_handler_, *it, roll_forward, publish_head, topic, subscribe);
+                                    ros_fe_->addSensingModule(*lo_pin_handler_, sensor_name, roll_forward, publish_head, topic, subscribe);
                             }
                             if (init)
                             {
                                 if(sim)
-                                    ros_fe_->addInitModule(*lo_pin_handler_sim_, *it, topic, subscribe);
+                                    ros_fe_->addInitModule(*lo_pin_handler_sim_, sensor_name, topic, subscribe);
                                 else
-                                    ros_fe_->addInitModule(*lo_pin_handler_, *it, topic, subscribe);
+                                    ros_fe_->addInitModule(*lo_pin_handler_, sensor_name, topic, subscribe);
                             }
                     }
-                    else if(it->compare("bias_lock")==0)
+                    else if(sensor_name.compare("bias_lock")==0)
                     {
-                        declare_parameter<bool>(*it + ".sim",false);
-                        declare_parameter<std::string>(*it + ".secondary_topic","");
+                        declare_parameter<bool>(sensor_name + ".sim",false);
+                        declare_parameter<std::string>(sensor_name + ".secondary_topic","");
                         bool sim ;
                         std::string sec_topic;
-                        get_parameter(*it+".sim",sim);
-                        get_parameter(*it + ".secondary_topic",sec_topic);
+                        get_parameter(sensor_name+".sim",sim);
+                        get_parameter(sensor_name + ".secondary_topic",sec_topic);
                         const std::string ins_param_prefix = "ins.";
                         std::string imu_frame = "imu";
                         std::string base_frame = "base_link";
@@ -272,67 +276,67 @@ namespace pronto
                         mod_parse_->get_imu_base_tranform(base_frame,imu_frame,i2bl_trans);
 
                      if(sim)
-                            ibl_handler_sim_ = std::make_shared<quadruped::ImuBiasLockROS_Sim>(shared_from_this(),i2bl_trans);
+                            ibl_handler_sim_ = std::make_shared<quadruped::ImuBiasLockROS_Sim>(shared_from_this(), i2bl_trans);
                         else
 
-                            ibl_handler_ = std::make_shared<quadruped::ImuBiasLockROS>(shared_from_this(),i2bl_trans);
+                            ibl_handler_ = std::make_shared<quadruped::ImuBiasLockROS>(shared_from_this(), i2bl_trans);
 
                         if (active)
                             {
                                 if(sim)
                                 {
-                                    ros_fe_->addSensingModule(*ibl_handler_sim_, *it, roll_forward, publish_head, topic, subscribe);
-                                    ros_fe_->addSecondarySensingModule(*ibl_handler_sim_,*it,sec_topic,subscribe);
+                                    ros_fe_->addSensingModule(*ibl_handler_sim_, sensor_name, roll_forward, publish_head, topic, subscribe);
+                                    ros_fe_->addSecondarySensingModule(*ibl_handler_sim_,sensor_name,sec_topic,subscribe);
                                 }
                                 else
                                 {
-                                    ros_fe_->addSensingModule(*ibl_handler_, *it, roll_forward, publish_head, topic, subscribe);
-                                    ros_fe_->addSecondarySensingModule(*ibl_handler_,*it,sec_topic,subscribe);
+                                    ros_fe_->addSensingModule(*ibl_handler_, sensor_name, roll_forward, publish_head, topic, subscribe);
+                                    ros_fe_->addSecondarySensingModule(*ibl_handler_,sensor_name,sec_topic,subscribe);
                                 }
                             }
                             if (init)
                             {
                                 if(sim)
-                                    ros_fe_->addInitModule(*ibl_handler_sim_, *it, topic, subscribe);
+                                    ros_fe_->addInitModule(*ibl_handler_sim_, sensor_name, topic, subscribe);
                                 else
-                                    ros_fe_->addInitModule(*ibl_handler_, *it, topic, subscribe);
+                                    ros_fe_->addInitModule(*ibl_handler_, sensor_name, topic, subscribe);
                             }
                     }
-                    else if(it->compare("qualysis_mt") == 0)
+                    else if(sensor_name.compare("qualysis_mt") == 0)
                     {
                             qual_mt_ = std::make_shared<QualysisMTRosHandler>(this->shared_from_this());
                             if (active)
                             {
-                                ros_fe_->addSensingModule(*qual_mt_, *it, roll_forward, publish_head, topic, subscribe);
+                                ros_fe_->addSensingModule(*qual_mt_, sensor_name, roll_forward, publish_head, topic, subscribe);
                             }
                             if (init)
                             {
-                                ros_fe_->addInitModule(*qual_mt_, *it, topic, subscribe);
+                                ros_fe_->addInitModule(*qual_mt_, sensor_name, topic, subscribe);
                             }
 
                     }
-                    else if(it->compare("scan_matcher") == 0)
+                    else if(sensor_name.compare("scan_matcher") == 0)
                     {
                         scan_match_handler_ = std::make_shared<ScanMatcherHandler>(this->shared_from_this());
                         if (active)
                         {
-                            ros_fe_->addSensingModule(*scan_match_handler_, *it, roll_forward, publish_head, topic, subscribe);
+                            ros_fe_->addSensingModule(*scan_match_handler_, sensor_name, roll_forward, publish_head, topic, subscribe);
                         }
                         if (init)
                         {
-                            ros_fe_->addInitModule(*scan_match_handler_, *it, topic, subscribe);
+                            ros_fe_->addInitModule(*scan_match_handler_, sensor_name, topic, subscribe);
                         }
                     }
-                    else if(it->compare("w_odom") == 0)
+                    else if(sensor_name.compare("w_odom") == 0)
                     {
                         w_odom_handler_ = std::make_shared<WheeledOdometry>(this->shared_from_this());
                         if (active)
                         {
-                            ros_fe_->addSensingModule(*w_odom_handler_, *it, roll_forward, publish_head, topic, subscribe);
+                            ros_fe_->addSensingModule(*w_odom_handler_, sensor_name, roll_forward, publish_head, topic, subscribe);
                         }
                         if (init)
                         {
-                            ros_fe_->addInitModule(*w_odom_handler_, *it, topic, subscribe);
+                            ros_fe_->addInitModule(*w_odom_handler_, sensor_name, topic, subscribe);
                         }
                     }
                 }
@@ -341,7 +345,7 @@ namespace pronto
             private:
                 SensorList init_sensors_;
                 SensorList active_sensors_;
-                SensorSet all_sensors_;
+                SensorList all_sensors_;
                 std::string urdf_file_;
 
                 //declare the mammal utils stuff and the ros_frontend
